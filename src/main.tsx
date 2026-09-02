@@ -12,6 +12,10 @@ import "./index.css";
 const Landing = lazy(() => import("./pages/Landing.tsx"));
 const AuthPage = lazy(() => import("./pages/Auth.tsx"));
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
+const CasesPage = lazy(() => import("./pages/Cases.tsx"));
+const NewCase = lazy(() => import("./pages/NewCase.tsx"));
+const CaseDetail = lazy(() => import("./pages/CaseDetail.tsx"));
+const AboutPage = lazy(() => import("./pages/About.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 // Simple loading fallback for route transitions
@@ -119,15 +123,40 @@ createRoot(document.getElementById("root")!).render(
           <Suspense fallback={<RouteLoading />}>
             <Routes>
               <Route path="/" element={<Landing />} />
+              <Route path="/about" element={<AboutPage />} />
               <Route
                 path="/auth"
-                element={<AuthPage redirectAfterAuth="/dashboard" />}
+                element={<AuthPage redirectAfterAuth="/cases" />}
               />
               <Route
                 path="/dashboard"
                 element={
                   <RequireAuth>
                     <Dashboard />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/cases"
+                element={
+                  <RequireAuth>
+                    <CasesPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/new-case"
+                element={
+                  <RequireAuth>
+                    <NewCase />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/cases/:caseId"
+                element={
+                  <RequireAuth>
+                    <CaseDetail />
                   </RequireAuth>
                 }
               />
