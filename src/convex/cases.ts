@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { sanitizeText } from "./sanitize";
 
 // ── Create a new case ──────────────────────────────────────────
 export const create = mutation({
@@ -28,10 +29,33 @@ export const create = mutation({
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
+    // Server-side consent enforcement
+    if (!args.consentGiven) {
+      throw new Error("Consent is required to create a case");
+    }
+
+    // Validate masked account format (must contain at least some X characters)
+    if (!args.accountMasked.match(/^X/i)) {
+      throw new Error("Account must be masked (e.g., XXXX4321). Full account numbers are not accepted.");
+    }
+
+    // Validate transaction amount is positive
+    if (args.transactionAmount <= 0) {
+      throw new Error("Transaction amount must be positive");
+    }
+
     const now = Date.now();
     const caseId = await ctx.db.insert("cases", {
       userId,
       ...args,
+      // Sanitize text fields to prevent stored XSS
+      bankName: sanitizeText(args.bankName),
+      branch: args.branch ? sanitizeText(args.branch) : undefined,
+      accountMasked: sanitizeText(args.accountMasked),
+      policeStationName: args.policeStationName ? sanitizeText(args.policeStationName) : undefined,
+      ioName: args.ioName ? sanitizeText(args.ioName) : undefined,
+      senderName: sanitizeText(args.senderName),
+      narrative: sanitizeText(args.narrative),
       statusIntakeComplete: true,
       statusReportGenerated: false,
       statusDispatched: false,
@@ -196,11 +220,12 @@ export const recordDispatch = mutation({
       updatedAt: now,
     });
 
+    const sanitizedNote = args.note ? sanitizeText(args.note) : undefined;
     await ctx.db.insert("timelineEvents", {
       caseId: args.caseId,
       eventType: "dispatch_simulated",
-      description: `Report shared with: ${args.targets.join(", ")}${args.note ? ` — ${args.note}` : ""}`,
-      metadata: JSON.stringify({ targets: args.targets, note: args.note }),
+      description: `Report shared with: ${args.targets.map(sanitizeText).join(", ")}${sanitizedNote ? ` — ${sanitizedNote}` : ""}`,
+      metadata: JSON.stringify({ targets: args.targets.map(sanitizeText), note: sanitizedNote }),
       createdAt: now,
     });
 
@@ -226,8 +251,8 @@ export const createEscalation = mutation({
     const now = Date.now();
     const draftId = await ctx.db.insert("escalationDrafts", {
       caseId: args.caseId,
-      target: args.target,
-      draftText: args.draftText,
+      target: sanitizeText(args.target),
+      draftText: args.draftText, // Draft text is user-authored, kept as-is (displayed in <pre>)
       sent: false,
       createdAt: now,
     });
@@ -263,9 +288,9 @@ export const recordResponse = mutation({
     const now = Date.now();
     await ctx.db.insert("responses", {
       caseId: args.caseId,
-      fromActor: args.fromActor,
-      mode: args.mode,
-      summary: args.summary,
+      fromActor: sanitizeText(args.fromActor),
+      mode: sanitizeText(args.mode),
+      summary: sanitizeText(args.summary),
       responseDate: args.responseDate,
       createdAt: now,
     });
@@ -311,7 +336,7 @@ export const addNote = mutation({
     await ctx.db.insert("timelineEvents", {
       caseId: args.caseId,
       eventType: "user_note",
-      description: args.description,
+      description: sanitizeText(args.description),
       createdAt: Date.now(),
     });
 

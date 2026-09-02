@@ -182,6 +182,13 @@ export const generateReport = mutation({
 export const getLatestReport = query({
   args: { caseId: v.id("cases") },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const caseData = await ctx.db.get(args.caseId);
+    if (!caseData) throw new Error("Case not found");
+    if (caseData.userId !== userId) throw new Error("Unauthorized");
+
     const reports = await ctx.db
       .query("generatedReports")
       .withIndex("by_case", (q) => q.eq("caseId", args.caseId))

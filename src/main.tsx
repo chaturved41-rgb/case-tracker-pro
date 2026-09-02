@@ -66,13 +66,13 @@ class RootErrorBoundary extends React.Component<
       return (
         <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
           <div className="max-w-lg text-center">
-            <p className="text-sm font-semibold">Preview runtime error</p>
+            <p className="text-sm font-semibold">Something went wrong</p>
             <p className="mt-2 text-xs text-muted-foreground break-words">
-              {this.state.message}
+              An unexpected error occurred. Please refresh the page or try again.
             </p>
-            {this.state.stack && (
+            {import.meta.env.DEV && this.state.stack && (
               <pre className="mt-3 text-left text-[10px] leading-4 text-muted-foreground/80 max-h-40 overflow-auto rounded border border-border/60 p-2">
-                {this.state.stack}
+                {this.state.message}
               </pre>
             )}
           </div>
