@@ -27,6 +27,15 @@ const schema = defineSchema(
       isAnonymous: v.optional(v.boolean()),
       role: v.optional(roleValidator),
       phone: v.optional(v.string()),
+      // Terms & privacy
+      termsAccepted: v.optional(v.boolean()),
+      termsAcceptedAt: v.optional(v.number()),
+      // Notification preferences
+      emailNotificationsEnabled: v.optional(v.boolean()),
+      smsNotificationsEnabled: v.optional(v.boolean()),
+      // Email integration
+      emailIntegrationEnabled: v.optional(v.boolean()),
+      emailIntegrationProvider: v.optional(v.string()), // "google" | "microsoft"
     }).index("email", ["email"]),
 
     // ── DIP Cases ──────────────────────────────────────────────
@@ -141,7 +150,60 @@ const schema = defineSchema(
       body: v.string(),
       channel: v.string(), // email | sms | in_app
       sentAt: v.number(),
+      isRead: v.boolean(), // NEW: read/unread flag
       metadata: v.optional(v.string()),
+    }).index("by_user", ["userId"])
+      .index("by_user_unread", ["userId", "isRead"]),
+
+    // ── Email Schedules (Automated Email Composer) ─────────────
+    emailSchedules: defineTable({
+      caseId: v.id("cases"),
+      userId: v.id("users"),
+      recipientType: v.string(), // bank_manager | bank_nodal | police_io | cyber_cell | other
+      recipientEmail: v.string(),
+      recipientName: v.optional(v.string()),
+      subjectTemplate: v.string(),
+      bodyTemplate: v.string(),
+      intervalDays: v.number(), // 0 = send once
+      maxSends: v.number(), // -1 = unlimited
+      sendsCount: v.number(),
+      nextSendAt: v.number(), // timestamp
+      active: v.boolean(),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    }).index("by_case", ["caseId"])
+      .index("by_user", ["userId"])
+      .index("by_active_sends", ["active", "nextSendAt"]),
+
+    // ── Detected Emails (Auto-read integration) ────────────────
+    detectedEmails: defineTable({
+      caseId: v.id("cases"),
+      userId: v.id("users"),
+      senderEmail: v.string(),
+      senderName: v.optional(v.string()),
+      subject: v.string(),
+      bodySnippet: v.string(),
+      receivedAt: v.string(), // ISO date
+      inferredStatus: v.optional(v.string()), // resolved | ongoing | noc | other
+      processed: v.boolean(),
+      createdAt: v.number(),
+    }).index("by_case", ["caseId"])
+      .index("by_user", ["userId"]),
+
+    // ── Screenshot Analyses ────────────────────────────────────
+    screenshotAnalyses: defineTable({
+      userId: v.id("users"),
+      fileName: v.string(),
+      extractedText: v.string(),
+      extractedBankName: v.optional(v.string()),
+      extractedAccountMasked: v.optional(v.string()),
+      extractedFreezeType: v.optional(v.string()),
+      extractedPoliceStation: v.optional(v.string()),
+      extractedReferenceNumber: v.optional(v.string()),
+      suggestedPoliceStation: v.optional(v.string()),
+      suggestedIoEmail: v.optional(v.string()),
+      instructions: v.string(), // JSON string of step-by-step instructions
+      createdAt: v.number(),
     }).index("by_user", ["userId"]),
   },
   {
