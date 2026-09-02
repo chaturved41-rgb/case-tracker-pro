@@ -34,18 +34,13 @@ function extractInfo(text: string): {
   let bankName: string | null = null;
   for (const bank of KNOWN_BANKS) {
     if (lower.includes(bank.toLowerCase())) {
-      // Use proper casing from our list
-      bankName = KNOWN_BANKS.find(
-        (b) => b.toLowerCase() === bank.toLowerCase(),
-      ) || bank;
+      bankName = bank;
       break;
     }
   }
 
   // Account number detection (masked pattern like XXXX1234 or ****1234)
-  const accountMatch = text.match(
-    /([Xx*\d]{0,4}[Xx*]{2,}\d{3,4})/,
-  );
+  const accountMatch = text.match(/([Xx*\d]{0,4}[Xx*]{2,}\d{3,4})/);
   const accountMasked = accountMatch ? accountMatch[1].toUpperCase() : null;
 
   // Freeze type detection
@@ -62,14 +57,13 @@ function extractInfo(text: string): {
   for (const pattern of CYBER_CELL_PATTERNS) {
     const idx = lower.indexOf(pattern);
     if (idx !== -1) {
-      // Try to extract the name before/after
       const surrounding = text.substring(Math.max(0, idx - 50), idx + 80);
       policeStation = surrounding.trim();
       break;
     }
   }
 
-  // Reference number detection (FIR, complaint, reference)
+  // Reference number detection
   const refMatch = text.match(
     /(?:fir|complaint|reference|reg|case\s*no|no\.?)\s*[:#\/\s]*([A-Z0-9\/\-]+)/i,
   );
@@ -82,28 +76,28 @@ function extractInfo(text: string): {
 function generateInstructions(info: {
   bankName: string | null;
   policeStation: string | null;
-}): string {
+}): string[] {
   const steps: string[] = [
-    "Step 1: Contact your bank branch and ask for written details about the freeze — including the freeze type, date, and the reason (investigation reference number).",
-    "Step 2: Ask the bank for the police station name and the Investigating Officer (IO) name and email/contact, if they have it.",
+    "Contact your bank branch and ask for written details about the freeze — including the freeze type, date, and the reason (investigation reference number).",
+    "Ask the bank for the police station name and the Investigating Officer (IO) name and email/contact, if they have it.",
   ];
 
   if (!info.policeStation) {
     steps.push(
-      "Step 3: If you don't know which police station is handling the case, ask the bank or check your SMS/email for any cyber crime cell notification.",
+      "If you don't know which police station is handling the case, ask the bank or check your SMS/email for any cyber crime cell notification.",
     );
   }
 
   steps.push(
-    "Step 4: Gather supporting documents — invoices, receipts, chat screenshots, delivery proofs — anything that shows the legitimacy of the transaction.",
-    "Step 5: Come back to DIP and create a case. Upload your evidence, generate your report, and share it with the bank and IO.",
-    "Step 6: Track your case on the DIP dashboard. Use the automated email composer to send follow-ups at regular intervals.",
+    "Gather supporting documents — invoices, receipts, chat screenshots, delivery proofs — anything that shows the legitimacy of the transaction.",
+    "Come back to DIP and create a case. Upload your evidence, generate your report, and share it with the bank and IO.",
+    "Track your case on the DIP dashboard. Use the automated email composer to send follow-ups at regular intervals.",
   );
 
-  return JSON.stringify(steps);
+  return steps;
 }
 
-// ── Analyze uploaded screenshot text (stub OCR for MVP) ────────
+// ── Analyze uploaded screenshot text ───────────────────────────
 export const analyzeText = mutation({
   args: {
     fileName: v.string(),
@@ -116,30 +110,31 @@ export const analyzeText = mutation({
     const text = args.extractedText;
     const info = extractInfo(text);
 
-    // Generate suggestions based on extracted info
-    let suggestedPoliceStation: string | null = null;
-    let suggestedIoEmail: string | null = null;
+    // Generate suggestions
+    let suggestedPoliceStation: string | undefined;
+    let suggestedIoEmail: string | undefined;
 
     if (info.policeStation) {
       suggestedPoliceStation = info.policeStation;
     }
     if (info.policeStation || info.bankName) {
-      // Suggest common IO email patterns (clearly labelled as suggestions)
       suggestedIoEmail = "cybercell@statepolice.gov.in (suggested – verify before use)";
     }
+
+    const instructions = generateInstructions(info);
 
     const analysisId = await ctx.db.insert("screenshotAnalyses", {
       userId,
       fileName: sanitizeText(args.fileName),
       extractedText: text,
-      extractedBankName: info.bankName,
-      extractedAccountMasked: info.accountMasked,
-      extractedFreezeType: info.freezeType,
-      extractedPoliceStation: info.policeStation,
-      extractedReferenceNumber: info.referenceNumber,
+      extractedBankName: info.bankName ?? undefined,
+      extractedAccountMasked: info.accountMasked ?? undefined,
+      extractedFreezeType: info.freezeType ?? undefined,
+      extractedPoliceStation: info.policeStation ?? undefined,
+      extractedReferenceNumber: info.referenceNumber ?? undefined,
       suggestedPoliceStation,
       suggestedIoEmail,
-      instructions: generateInstructions(info),
+      instructions: JSON.stringify(instructions),
       createdAt: Date.now(),
     });
 
@@ -161,9 +156,9 @@ export const analyzeText = mutation({
       freezeType: info.freezeType,
       policeStation: info.policeStation,
       referenceNumber: info.referenceNumber,
-      suggestedPoliceStation,
-      suggestedIoEmail,
-      instructions: JSON.parse(generateInstructions(info)),
+      suggestedPoliceStation: suggestedPoliceStation ?? null,
+      suggestedIoEmail: suggestedIoEmail ?? null,
+      instructions,
     };
   },
 });
@@ -180,20 +175,5 @@ export const list = query({
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .order("desc")
       .collect();
-  },
-});
-
-// ── Get analysis by ID ─────────────────────────────────────────
-export const get = query({
-  args: { analysisId: v.id("screenshotAnalyses") },
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-
-    const analysis = await ctx.db.get(args.analysisId);
-    if (!analysis) throw new Error("Analysis not found");
-    if (analysis.userId !== userId) throw new Error("Unauthorized");
-
-    return analysis;
   },
 });

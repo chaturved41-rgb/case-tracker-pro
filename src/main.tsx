@@ -1,5 +1,6 @@
 import { Toaster } from "@/components/ui/sonner";
 import { RequireAuth } from "@/components/RequireAuth";
+import { CookieConsent } from "@/components/CookieConsent";
 import { VlyToolbar } from "../vly-toolbar-readonly.tsx";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
@@ -16,6 +17,10 @@ const CasesPage = lazy(() => import("./pages/Cases.tsx"));
 const NewCase = lazy(() => import("./pages/NewCase.tsx"));
 const CaseDetail = lazy(() => import("./pages/CaseDetail.tsx"));
 const AboutPage = lazy(() => import("./pages/About.tsx"));
+const AnalyzeScreenshot = lazy(() => import("./pages/AnalyzeScreenshot.tsx"));
+const Terms = lazy(() => import("./pages/Terms.tsx"));
+const Privacy = lazy(() => import("./pages/Privacy.tsx"));
+const Settings = lazy(() => import("./pages/Settings.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 // Simple loading fallback for route transitions
@@ -124,6 +129,8 @@ createRoot(document.getElementById("root")!).render(
             <Routes>
               <Route path="/" element={<Landing />} />
               <Route path="/about" element={<AboutPage />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/privacy" element={<Privacy />} />
               <Route
                 path="/auth"
                 element={<AuthPage redirectAfterAuth="/cases" />}
@@ -160,11 +167,28 @@ createRoot(document.getElementById("root")!).render(
                   </RequireAuth>
                 }
               />
+              <Route
+                path="/analyze"
+                element={
+                  <RequireAuth>
+                    <AnalyzeScreenshot />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <RequireAuth>
+                    <Settings />
+                  </RequireAuth>
+                }
+              />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
         </BrowserRouter>
         <Toaster />
+        <CookieConsent />
       </ConvexAuthProvider>
     </RootErrorBoundary>
   </StrictMode>,

@@ -26,6 +26,9 @@ import {
   LogOut,
   FileText,
   Clock,
+  Camera,
+  Settings,
+  Bell,
 } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -75,12 +78,10 @@ export default function CasesPage() {
             <span className="text-sm text-muted-foreground hidden sm:block">
               {user?.email || user?.name || "Guest"}
             </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleSignOut}
-              className="text-muted-foreground"
-            >
+            <Button variant="ghost" size="sm" onClick={() => navigate("/settings")} className="text-muted-foreground">
+              <Settings className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleSignOut} className="text-muted-foreground">
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
@@ -101,13 +102,24 @@ export default function CasesPage() {
                 Track and manage your evidence cases
               </p>
             </div>
-            <Button
-              onClick={() => navigate("/new-case")}
-              className="gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              New Case
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate("/analyze")}
+                className="gap-1.5"
+              >
+                <Camera className="h-4 w-4" />
+                Analyze Screenshot
+              </Button>
+              <Button
+                onClick={() => navigate("/new-case")}
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                New Case
+              </Button>
+            </div>
           </div>
 
           {/* Cases */}

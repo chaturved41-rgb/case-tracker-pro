@@ -357,8 +357,12 @@ export default function Landing() {
             <button onClick={() => navigate("/about")} className="hover:text-foreground transition-colors">
               About
             </button>
-            <span className="cursor-default">Privacy</span>
-            <span className="cursor-default">Terms</span>
+            <button onClick={() => navigate("/privacy")} className="hover:text-foreground transition-colors">
+              Privacy
+            </button>
+            <button onClick={() => navigate("/terms")} className="hover:text-foreground transition-colors">
+              Terms
+            </button>
             <span className="cursor-default">Contact</span>
           </div>
         </div>

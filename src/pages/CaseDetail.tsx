@@ -43,6 +43,13 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
+  Bell,
+  Mail,
+  Eye,
+  EyeOff,
+  CalendarClock,
+  X,
+  Loader2,
 } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -134,6 +141,33 @@ export default function CaseDetail() {
 
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   const [noteText, setNoteText] = useState("");
+
+  // Notifications
+  const caseNotifications = useQuery(
+    api.notifications.list,
+    caseId ? { caseId: caseId as any } : "skip",
+  );
+  const markNotifRead = useMutation(api.notifications.markRead);
+  const markAllNotifsRead = useMutation(api.notifications.markAllRead);
+
+  // Email schedules
+  const emailSchedules = useQuery(
+    api.emailSchedules.listSchedules,
+    caseId ? { caseId: caseId as any } : "skip",
+  );
+  const emailTemplates = useQuery(
+    api.emailSchedules.getTemplates,
+    caseId ? { caseId: caseId as any } : "skip",
+  );
+  const createSchedule = useMutation(api.emailSchedules.createSchedule);
+  const cancelSchedule = useMutation(api.emailSchedules.cancelSchedule);
+
+  const [automateDialogOpen, setAutomateDialogOpen] = useState(false);
+  const [scheduleRecipient, setScheduleRecipient] = useState("");
+  const [scheduleEmail, setScheduleEmail] = useState("");
+  const [scheduleInterval, setScheduleInterval] = useState("0");
+  const [scheduleMaxSends, setScheduleMaxSends] = useState("3");
+  const [selectedTemplate, setSelectedTemplate] = useState("");
 
   const handleSignOut = async () => {
     await signOut();
@@ -456,6 +490,19 @@ export default function CaseDetail() {
                 <ExternalLink className="h-3.5 w-3.5" />
                 Responses
               </TabsTrigger>
+              <TabsTrigger value="automate" className="gap-1.5">
+                <CalendarClock className="h-3.5 w-3.5" />
+                Automate
+              </TabsTrigger>
+              <TabsTrigger value="notifications" className="gap-1.5">
+                <Bell className="h-3.5 w-3.5" />
+                Notifications
+                {caseNotifications && caseNotifications.filter((n: any) => !n.isRead).length > 0 && (
+                  <span className="ml-1 h-4 w-4 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center font-bold">
+                    {caseNotifications.filter((n: any) => !n.isRead).length}
+                  </span>
+                )}
+              </TabsTrigger>
             </TabsList>
 
             {/* Timeline Tab */}
@@ -585,6 +632,112 @@ export default function CaseDetail() {
                             <span className="text-xs text-muted-foreground">{resp.responseDate}</span>
                           </div>
                           <p className="mt-2 text-sm text-muted-foreground">{resp.summary}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* ── Automate Emails Tab ── */}
+            <TabsContent value="automate">
+              <Card className="border-border/70">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-sm font-semibold">Automated Emails</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">Schedule follow-up emails to bank officers, police, and others</p>
+                    </div>
+                    <Button size="sm" className="gap-1.5" onClick={() => setAutomateDialogOpen(true)}>
+                      <Plus className="h-3.5 w-3.5" /> New Schedule
+                    </Button>
+                  </div>
+
+                  {emailSchedules === undefined ? (
+                    <p className="text-sm text-muted-foreground">Loading...</p>
+                  ) : emailSchedules.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Mail className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
+                      <p className="text-sm text-muted-foreground">No email schedules yet.</p>
+                      <p className="text-xs text-muted-foreground mt-1">Set up automated follow-ups to stay on top of your case.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {emailSchedules.map((sch: any) => (
+                        <div key={sch._id} className="rounded-lg border border-border/60 p-4">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="capitalize text-[10px]">{sch.recipientType.replace(/_/g, " ")}</Badge>
+                                <Badge variant="outline" className={`text-[10px] ${sch.active ? "bg-emerald-50 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
+                                  {sch.active ? "Active" : "Cancelled"}
+                                </Badge>
+                              </div>
+                              <p className="text-sm mt-1.5">To: <span className="font-medium">{sch.recipientEmail}</span></p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                Sent {sch.sendsCount}/{sch.maxSends === -1 ? "∞" : sch.maxSends} times
+                                {sch.intervalDays > 0 ? ` • Every ${sch.intervalDays} days` : " • Once"}
+                              </p>
+                            </div>
+                            {sch.active && (
+                              <Button variant="ghost" size="sm" className="text-destructive text-xs" onClick={async () => { await cancelSchedule({ scheduleId: sch._id }); toast.success("Schedule cancelled"); }}>
+                                Cancel
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* ── Notifications Tab ── */}
+            <TabsContent value="notifications">
+              <Card className="border-border/70">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-semibold">Notifications</h3>
+                    {caseNotifications && caseNotifications.some((n: any) => !n.isRead) && (
+                      <Button variant="outline" size="sm" className="gap-1.5" onClick={async () => { await markAllNotifsRead({ caseId: caseId as any }); toast.success("All marked as read"); }}>
+                        <Eye className="h-3.5 w-3.5" /> Mark all read
+                      </Button>
+                    )}
+                  </div>
+
+                  {caseNotifications === undefined ? (
+                    <p className="text-sm text-muted-foreground">Loading...</p>
+                  ) : caseNotifications.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Bell className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
+                      <p className="text-sm text-muted-foreground">No notifications yet.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {caseNotifications.map((n: any) => (
+                        <div
+                          key={n._id}
+                          className={`rounded-lg border p-4 transition-colors ${!n.isRead ? "border-accent/30 bg-accent/5" : "border-border/60"}`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-medium">{n.subject}</p>
+                                {!n.isRead && <span className="h-2 w-2 rounded-full bg-accent shrink-0" />}
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{n.body}</p>
+                              <p className="text-[10px] text-muted-foreground mt-1.5">
+                                {new Date(n.sentAt).toLocaleString("en-IN")} • {n.channel}
+                              </p>
+                            </div>
+                            {!n.isRead && (
+                              <Button variant="ghost" size="sm" className="shrink-0 h-7 w-7 p-0" onClick={async () => { await markNotifRead({ notificationId: n._id }); }}>
+                                <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -801,6 +954,119 @@ export default function CaseDetail() {
             </Button>
             <Button onClick={handleAddNote} disabled={!noteText.trim()}>
               Add Note
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Automate Emails Dialog ── */}
+      <Dialog open={automateDialogOpen} onOpenChange={setAutomateDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>Schedule Automated Email</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Recipient Type</Label>
+              <Select value={scheduleRecipient} onValueChange={(v) => {
+                setScheduleRecipient(v);
+                // Auto-select template
+                if (emailTemplates) {
+                  const tmpl = emailTemplates.find((t: any) => t.recipientType === v);
+                  if (tmpl) setSelectedTemplate(JSON.stringify(tmpl));
+                }
+              }}>
+                <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select recipient" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bank_manager">Bank Branch Manager</SelectItem>
+                  <SelectItem value="bank_nodal">Bank Nodal Officer</SelectItem>
+                  <SelectItem value="police_io">Police Station / IO</SelectItem>
+                  <SelectItem value="cyber_cell">Cyber Cell</SelectItem>
+                  <SelectItem value="other">Other (Custom)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Recipient Email</Label>
+              <Input
+                type="email"
+                placeholder="recipient@example.com"
+                value={scheduleEmail}
+                onChange={(e) => setScheduleEmail(e.target.value)}
+                className="mt-1.5"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Send Interval</Label>
+                <Select value={scheduleInterval} onValueChange={setScheduleInterval}>
+                  <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">Send once now</SelectItem>
+                    <SelectItem value="7">Repeat every 7 days</SelectItem>
+                    <SelectItem value="14">Repeat every 14 days</SelectItem>
+                    <SelectItem value="30">Repeat every 30 days</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Max Sends</Label>
+                <Select value={scheduleMaxSends} onValueChange={setScheduleMaxSends}>
+                  <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1 time</SelectItem>
+                    <SelectItem value="3">3 times</SelectItem>
+                    <SelectItem value="5">5 times</SelectItem>
+                    <SelectItem value="-1">Unlimited</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {selectedTemplate && (
+              <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
+                <p className="text-xs font-semibold text-muted-foreground mb-2">Preview</p>
+                <pre className="text-xs whitespace-pre-wrap text-muted-foreground leading-relaxed max-h-40 overflow-auto">
+                  {(() => { try { const tmpl = JSON.parse(selectedTemplate); return `Subject: ${tmpl.subject}\n\n${tmpl.body}`; } catch { return ''; } })()}
+                </pre>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAutomateDialogOpen(false)}>Cancel</Button>
+            <Button
+              onClick={async () => {
+                if (!scheduleRecipient || !scheduleEmail.trim()) return;
+                try {
+                  let subject = "Follow-up regarding account " + caseData.accountMasked;
+                  let body = "Default follow-up email body.";
+                  if (selectedTemplate) {
+                    try {
+                      const tmpl = JSON.parse(selectedTemplate);
+                      subject = tmpl.subject;
+                      body = tmpl.body;
+                    } catch { /* use defaults */ }
+                  }
+                  await createSchedule({
+                    caseId: caseId as any,
+                    recipientType: scheduleRecipient,
+                    recipientEmail: scheduleEmail.trim(),
+                    subjectTemplate: subject,
+                    bodyTemplate: body,
+                    intervalDays: parseInt(scheduleInterval),
+                    maxSends: parseInt(scheduleMaxSends),
+                    sendImmediately: true,
+                  });
+                  toast.success("Email schedule created");
+                  setAutomateDialogOpen(false);
+                  setScheduleRecipient("");
+                  setScheduleEmail("");
+                } catch (e) {
+                  toast.error("Failed to create schedule");
+                }
+              }}
+              disabled={!scheduleRecipient || !scheduleEmail.trim()}
+            >
+              Create Schedule
             </Button>
           </DialogFooter>
         </DialogContent>
