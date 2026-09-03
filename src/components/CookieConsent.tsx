@@ -1,12 +1,10 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Shield } from "lucide-react";
 
 const COOKIE_CONSENT_KEY = "dip_cookie_consent";
 
 export function CookieConsent() {
-  const navigate = useNavigate();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -34,19 +32,19 @@ export function CookieConsent() {
             </p>
             <p className="text-muted-foreground mt-0.5">
               By continuing, you agree to our{" "}
-              <button onClick={() => navigate("/terms")} className="underline hover:text-foreground transition-colors">
+              <a href="/terms" className="underline hover:text-foreground transition-colors">
                 Terms
-              </button>{" "}
+              </a>{" "}
               and{" "}
-              <button onClick={() => navigate("/privacy")} className="underline hover:text-foreground transition-colors">
+              <a href="/privacy" className="underline hover:text-foreground transition-colors">
                 Privacy Policy
-              </button>.
+              </a>.
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Button variant="outline" size="sm" onClick={() => navigate("/privacy")}>
-            Manage
+          <Button variant="outline" size="sm" asChild>
+            <a href="/privacy">Manage</a>
           </Button>
           <Button size="sm" onClick={handleAccept}>
             Accept

@@ -187,8 +187,8 @@ createRoot(document.getElementById("root")!).render(
             </Routes>
           </Suspense>
           <CookieConsent />
+          <Toaster />
         </BrowserRouter>
-        <Toaster />
       </ConvexAuthProvider>
     </RootErrorBoundary>
   </StrictMode>,
