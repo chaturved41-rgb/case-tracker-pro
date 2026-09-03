@@ -169,11 +169,31 @@ const schema = defineSchema(
       sendsCount: v.number(),
       nextSendAt: v.number(), // timestamp
       active: v.boolean(),
+      testMode: v.optional(v.boolean()), // true = test email to user's own address
+      lastSentAt: v.optional(v.number()),
+      lastProviderMessageId: v.optional(v.string()),
+      lastError: v.optional(v.string()),
+      deliveryStatus: v.optional(v.string()), // draft | scheduled | sending | accepted_by_provider | failed | cancelled
       createdAt: v.number(),
       updatedAt: v.number(),
     }).index("by_case", ["caseId"])
       .index("by_user", ["userId"])
       .index("by_active_sends", ["active", "nextSendAt"]),
+
+    // ── Email Delivery Log ─────────────────────────────────────
+    emailDeliveryLog: defineTable({
+      caseId: v.id("cases"),
+      userId: v.id("users"),
+      scheduleId: v.optional(v.id("emailSchedules")),
+      recipientEmail: v.string(),
+      recipientType: v.string(),
+      subject: v.string(),
+      deliveryStatus: v.string(), // accepted_by_provider | failed
+      providerMessageId: v.optional(v.string()),
+      error: v.optional(v.string()),
+      sentAt: v.number(),
+    }).index("by_case", ["caseId"])
+      .index("by_user", ["userId"]),
 
     // ── Detected Emails (Auto-read integration) ────────────────
     detectedEmails: defineTable({
