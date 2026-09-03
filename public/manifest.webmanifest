@@ -1,7 +1,7 @@
 {
-  "name": "freebuff.com application",
-  "short_name": "freebuff.com",
-  "description": "freebuff.com application",
+  "name": "DIP — Digital Innocence Protocol",
+  "short_name": "DIP",
+  "description": "A privacy-preserving evidence and case-tracking tool for people whose accounts are linked to cyber-fraud investigations.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

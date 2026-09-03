@@ -186,9 +186,9 @@ createRoot(document.getElementById("root")!).render(
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
+          <CookieConsent />
         </BrowserRouter>
         <Toaster />
-        <CookieConsent />
       </ConvexAuthProvider>
     </RootErrorBoundary>
   </StrictMode>,
