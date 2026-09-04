@@ -74,27 +74,20 @@ export default defineConfig({
   },
   // Optimize dependencies
   optimizeDeps: {
-    // Only scan the app entry HTML; avoids crawling unrelated *.html files
-    // if a legacy snapshot accidentally contains leaked package folders.
     entries: ['index.html'],
     include: [
       'react',
       'react/jsx-runtime',
       'react-dom',
       'react-dom/client',
-      'react-router',
       '@convex-dev/auth/react',
       'framer-motion',
     ],
   },
   // Performance hints
   server: { allowedHosts: true,
-    // Bind to all interfaces so WebContainer's server-ready event fires.
     host: true,
     port: 5173,
-    // Keep HMR on, but disable full-screen error overlay
-    hmr: {
-      overlay: false,
-    },
+    hmr: false,
   },
 });

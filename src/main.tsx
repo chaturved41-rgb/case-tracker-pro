@@ -4,12 +4,17 @@ import { CookieConsent } from "@/components/CookieConsent";
 import { VlyToolbar } from "../vly-toolbar-readonly.tsx";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
-import React, { StrictMode, useEffect, lazy, Suspense } from "react";
+import React, { StrictMode, Suspense, lazy, useEffect } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Route, Routes, useLocation } from "react-router";
+import {
+  createBrowserRouter,
+  RouterProvider,
+  Outlet,
+  useLocation,
+} from "react-router";
 import "./index.css";
 
-// Lazy load route components for better code splitting
+// ── Lazy-loaded page components ───────────────────────────────
 const Landing = lazy(() => import("./pages/Landing.tsx"));
 const AuthPage = lazy(() => import("./pages/Auth.tsx"));
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
@@ -23,7 +28,7 @@ const Privacy = lazy(() => import("./pages/Privacy.tsx"));
 const Settings = lazy(() => import("./pages/Settings.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
-// Simple loading fallback for route transitions
+// ── Simple loading fallback ──────────────────────────────────
 function RouteLoading() {
   return (
     <div className="min-h-screen flex items-center justify-center">
@@ -32,8 +37,7 @@ function RouteLoading() {
   );
 }
 
-/** Silent error boundary — if VlyToolbar crashes it renders nothing instead of
- *  crashing the whole app (e.g. hook errors in WebContainer environment). */
+// ── Error boundaries ─────────────────────────────────────────
 class ToolbarErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { hasError: boolean }
@@ -50,7 +54,6 @@ class ToolbarErrorBoundary extends React.Component<
   }
 }
 
-/** Hard guard so runtime errors never leave the preview as a blank page. */
 class RootErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { hasError: boolean; message: string; stack: string }
@@ -88,10 +91,10 @@ class RootErrorBoundary extends React.Component<
   }
 }
 
+// ── Convex client ────────────────────────────────────────────
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
 
-
-
+// ── RouteSyncer: syncs iframe routes with parent ─────────────
 function RouteSyncer() {
   const location = useLocation();
   useEffect(() => {
@@ -115,7 +118,87 @@ function RouteSyncer() {
   return null;
 }
 
+// ── Root layout (rendered inside RouterProvider) ──────────────
+function RootLayout() {
+  return (
+    <>
+      <RouteSyncer />
+      <Suspense fallback={<RouteLoading />}>
+        <Outlet />
+      </Suspense>
+      <CookieConsent />
+      <Toaster />
+    </>
+  );
+}
 
+// ── Router configuration ─────────────────────────────────────
+const router = createBrowserRouter([
+  {
+    element: <RootLayout />,
+    children: [
+      { path: "/", element: <Landing /> },
+      { path: "/about", element: <AboutPage /> },
+      { path: "/terms", element: <Terms /> },
+      { path: "/privacy", element: <Privacy /> },
+      {
+        path: "/auth",
+        element: <AuthPage redirectAfterAuth="/cases" />,
+      },
+      {
+        path: "/dashboard",
+        element: (
+          <RequireAuth>
+            <Dashboard />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: "/cases",
+        element: (
+          <RequireAuth>
+            <CasesPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: "/new-case",
+        element: (
+          <RequireAuth>
+            <NewCase />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: "/cases/:caseId",
+        element: (
+          <RequireAuth>
+            <CaseDetail />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: "/analyze",
+        element: (
+          <RequireAuth>
+            <AnalyzeScreenshot />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: "/settings",
+        element: (
+          <RequireAuth>
+            <Settings />
+          </RequireAuth>
+        ),
+      },
+      { path: "*", element: <NotFound /> },
+    ],
+  },
+]);
+
+// ── Render ───────────────────────────────────────────────────
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <RootErrorBoundary>
@@ -123,72 +206,7 @@ createRoot(document.getElementById("root")!).render(
         <VlyToolbar />
       </ToolbarErrorBoundary>
       <ConvexAuthProvider client={convex}>
-        <BrowserRouter>
-          <RouteSyncer />
-          <Suspense fallback={<RouteLoading />}>
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/about" element={<AboutPage />} />
-              <Route path="/terms" element={<Terms />} />
-              <Route path="/privacy" element={<Privacy />} />
-              <Route
-                path="/auth"
-                element={<AuthPage redirectAfterAuth="/cases" />}
-              />
-              <Route
-                path="/dashboard"
-                element={
-                  <RequireAuth>
-                    <Dashboard />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/cases"
-                element={
-                  <RequireAuth>
-                    <CasesPage />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/new-case"
-                element={
-                  <RequireAuth>
-                    <NewCase />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/cases/:caseId"
-                element={
-                  <RequireAuth>
-                    <CaseDetail />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/analyze"
-                element={
-                  <RequireAuth>
-                    <AnalyzeScreenshot />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/settings"
-                element={
-                  <RequireAuth>
-                    <Settings />
-                  </RequireAuth>
-                }
-              />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-          <CookieConsent />
-          <Toaster />
-        </BrowserRouter>
+        <RouterProvider router={router} />
       </ConvexAuthProvider>
     </RootErrorBoundary>
   </StrictMode>,
