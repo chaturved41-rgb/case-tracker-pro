@@ -121,10 +121,24 @@ export const healthCheck = action({
   handler: async () => {
     const apiKey = process.env.RESEND_API_KEY;
     const emailFrom = process.env.EMAIL_FROM;
+    const emailFromName = process.env.EMAIL_FROM_NAME || "DIP — Digital Innocence Protocol";
+    const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
 
     const configured = !!apiKey;
     const senderConfigured = !!emailFrom;
     const testModeAvailable = !!apiKey && !senderConfigured;
+
+    // Determine sender display and verification state
+    let senderAddress = "Not configured";
+    let senderVerificationState: "verified" | "test_sender" | "not_configured" = "not_configured";
+
+    if (senderConfigured && emailFrom) {
+      senderAddress = `${emailFromName} <${emailFrom}>`;
+      senderVerificationState = "verified";
+    } else if (configured) {
+      senderAddress = "DIP <onboarding@resend.dev>";
+      senderVerificationState = "test_sender";
+    }
 
     if (!configured) {
       return {
@@ -132,6 +146,9 @@ export const healthCheck = action({
         provider: "resend" as const,
         senderConfigured: false,
         testModeAvailable: false,
+        senderAddress,
+        senderVerificationState,
+        webhookConfigured: false,
         safeError:
           "Real email delivery is not configured yet. To enable it:\n" +
           "1. Create a Resend account at https://resend.com\n" +
@@ -148,8 +165,11 @@ export const healthCheck = action({
         provider: "resend" as const,
         senderConfigured: false,
         testModeAvailable: true,
+        senderAddress,
+        senderVerificationState,
+        webhookConfigured: !!webhookSecret,
         safeError:
-          "Using Resend test sender (onboarding@resend.dev). Only test emails to your own address will work.",
+          "Using Resend test sender (onboarding@resend.dev). Emails to your own address may be delivered, but recipient delivery cannot be confirmed through test sender. For production, verify a domain in Resend and set EMAIL_FROM.",
       };
     }
 
@@ -158,6 +178,9 @@ export const healthCheck = action({
       provider: "resend" as const,
       senderConfigured: true,
       testModeAvailable: true,
+      senderAddress,
+      senderVerificationState,
+      webhookConfigured: !!webhookSecret,
     };
   },
 });

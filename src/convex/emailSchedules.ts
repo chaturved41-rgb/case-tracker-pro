@@ -699,3 +699,73 @@ Case reference: ${args.caseId}
     return scheduleId;
   },
 });
+
+// ── Find delivery log entry by provider message ID ───────────
+export const findDeliveryByProviderMessageId = internalQuery({
+  args: { providerMessageId: v.string() },
+  handler: async (ctx, args) => {
+    const results = await ctx.db
+      .query("emailDeliveryLog")
+      .withIndex("by_provider_message_id", (q) =>
+        q.eq("providerMessageId", args.providerMessageId),
+      )
+      .collect();
+
+    return results.length > 0 ? results[0] : null;
+  },
+});
+
+// ── Update delivery status from webhook ──────────────────────
+export const updateDeliveryStatus = internalMutation({
+  args: {
+    deliveryLogId: v.id("emailDeliveryLog"),
+    status: v.string(),
+    webhookEventId: v.optional(v.string()),
+    bounceReason: v.optional(v.string()),
+    deliveredAt: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const updates: Record<string, unknown> = {
+      status: args.status,
+      webhookEventId: args.webhookEventId,
+    };
+    if (args.bounceReason) updates.bounceReason = args.bounceReason;
+    if (args.deliveredAt) updates.deliveredAt = args.deliveredAt;
+
+    await ctx.db.patch(args.deliveryLogId, updates);
+
+    // Also update the parent schedule if it exists
+    const log = await ctx.db.get(args.deliveryLogId);
+    if (log?.scheduleId) {
+      const scheduleUpdates: Record<string, unknown> = {
+        deliveryStatus: args.status,
+        updatedAt: Date.now(),
+      };
+      if (args.bounceReason) scheduleUpdates.lastError = args.bounceReason;
+      if (args.status === "delivered") scheduleUpdates.lastError = undefined;
+      await ctx.db.patch(log.scheduleId, scheduleUpdates);
+    }
+
+    return true;
+  },
+});
+
+// ── Add timeline event from webhook (internal) ───────────────
+export const addTimelineEvent = internalMutation({
+  args: {
+    caseId: v.id("cases"),
+    eventType: v.string(),
+    description: v.string(),
+    metadata: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("timelineEvents", {
+      caseId: args.caseId,
+      eventType: args.eventType,
+      description: args.description,
+      metadata: args.metadata,
+      createdAt: Date.now(),
+    });
+    return true;
+  },
+});

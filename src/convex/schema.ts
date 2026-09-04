@@ -189,18 +189,23 @@ const schema = defineSchema(
       recipientEmail: v.string(),
       recipientType: v.string(),
       subject: v.string(),
-      status: v.string(), // draft | scheduled | sending | accepted_by_provider | failed | cancelled
+      // queued | accepted_by_provider | delivered | bounced | complained | delayed | failed | cancelled
+      status: v.string(),
       provider: v.optional(v.string()), // "resend"
       providerMessageId: v.optional(v.string()),
       errorMessage: v.optional(v.string()),
+      bounceReason: v.optional(v.string()),
       idempotencyKey: v.optional(v.string()),
       testMode: v.optional(v.boolean()),
       createdAt: v.number(),
       attemptedAt: v.optional(v.number()),
       completedAt: v.optional(v.number()),
+      deliveredAt: v.optional(v.number()),
+      webhookEventId: v.optional(v.string()),
     }).index("by_case", ["caseId"])
       .index("by_user", ["userId"])
-      .index("by_idempotency_key", ["idempotencyKey"]),
+      .index("by_idempotency_key", ["idempotencyKey"])
+      .index("by_provider_message_id", ["providerMessageId"]),
 
     // ── Detected Emails (Auto-read integration) ────────────────
     detectedEmails: defineTable({

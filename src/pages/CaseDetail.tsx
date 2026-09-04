@@ -178,7 +178,8 @@ export default function CaseDetail() {
   const processDue = useAction(api.emailProcessor.processDueSchedules);
 
   // Email UI state
-  const [emailHealth, setEmailHealth] = useState<null | { configured: boolean; senderConfigured: boolean; safeError?: string }>(null);
+  const [emailHealth, setEmailHealth] = useState<null | { configured: boolean; senderConfigured: boolean; safeError?: string; senderAddress?: string; senderVerificationState?: string; webhookConfigured?: boolean }>(null);
+  const [showTroubleshooting, setShowTroubleshooting] = useState(false);
   const [testEmailSending, setTestEmailSending] = useState(false);
   const [testEmailResult, setTestEmailResult] = useState<null | { success: boolean; message: string }>(null);
   const [demoProcessing, setDemoProcessing] = useState(false);
@@ -692,6 +693,77 @@ export default function CaseDetail() {
                         <RefreshCw className="h-3.5 w-3.5" /> Check Status
                       </Button>
                     </div>
+
+                    {/* Sender configuration display */}
+                    {emailHealth && (
+                      <div className="mt-3 pt-3 border-t border-border/60">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Current Sender</p>
+                            <p className="text-xs font-medium mt-0.5 font-mono">{emailHealth.senderAddress || "Not configured"}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Sender Verification</p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className={`h-1.5 w-1.5 rounded-full ${emailHealth.senderVerificationState === "verified" ? "bg-emerald-500" : emailHealth.senderVerificationState === "test_sender" ? "bg-amber-500" : "bg-red-500"}`} />
+                              <span className="text-xs font-medium capitalize">{emailHealth.senderVerificationState === "verified" ? "Verified domain" : emailHealth.senderVerificationState === "test_sender" ? "Test/sandbox sender" : "Not configured"}</span>
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Webhooks</p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className={`h-1.5 w-1.5 rounded-full ${emailHealth.webhookConfigured ? "bg-emerald-500" : "bg-amber-500"}`} />
+                              <span className="text-xs font-medium">{emailHealth.webhookConfigured ? "Configured" : "Not set"}</span>
+                            </div>
+                          </div>
+                        </div>
+                        {emailHealth.senderVerificationState === "test_sender" && (
+                          <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-700 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800">
+                            <p className="font-medium mb-1">Using test/sandbox sender</p>
+                            <p className="text-[11px]">Emails are sent from <code>onboarding@resend.dev</code>. Delivery is restricted to your own email address. For production delivery to any recipient, verify a domain in Resend and set <code>EMAIL_FROM</code> to an address on that verified domain. Configure SPF, DKIM and DMARC through Resend domain verification.</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Email Troubleshooting Card */}
+                <Card className="border-border/70">
+                  <CardContent className="p-4">
+                    <button className="flex items-center gap-2 text-sm font-medium w-full" onClick={() => setShowTroubleshooting(!showTroubleshooting)}>
+                      <AlertCircle className="h-4 w-4" />
+                      Email Troubleshooting Guide
+                      <ChevronLeft className={`h-4 w-4 ml-auto transition-transform ${showTroubleshooting ? "rotate-[-90deg]" : "rotate-[-270deg]"}`} />
+                    </button>
+                    {showTroubleshooting && (
+                      <div className="mt-4 space-y-3 text-xs text-muted-foreground">
+                        <div className="rounded-lg border border-border/60 p-3">
+                          <p className="font-medium text-foreground">Step 1: Check email status in delivery history</p>
+                          <p className="mt-1">Scroll down to "Delivery History" and check the status of your email. <strong>accepted_by_provider</strong> means Resend accepted the API call but has not confirmed Gmail delivery.</p>
+                        </div>
+                        <div className="rounded-lg border border-border/60 p-3">
+                          <p className="font-medium text-foreground">Step 2: Check all Gmail folders</p>
+                          <p className="mt-1">Search Gmail for the sender address and subject. Check Spam, Promotions, Updates, Social, and All Mail. Gmail filters may move automated emails out of Primary.</p>
+                        </div>
+                        <div className="rounded-lg border border-border/60 p-3">
+                          <p className="font-medium text-foreground">Step 3: Understand test sender limitations</p>
+                          <p className="mt-1">If using <code>onboarding@resend.dev</code> (test/sandbox sender), Resend restricts delivery to your own email address only. Other recipients will not receive the email. This is a Resend sandbox policy.</p>
+                        </div>
+                        <div className="rounded-lg border border-border/60 p-3">
+                          <p className="font-medium text-foreground">Step 4: Verify your domain for production delivery</p>
+                          <p className="mt-1">Go to <a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer" className="text-accent underline">resend.com/domains</a> → Add Domain → follow DNS instructions for SPF, DKIM, DMARC. Once verified, set <code>EMAIL_FROM</code> to an address on that domain.</p>
+                        </div>
+                        <div className="rounded-lg border border-border/60 p-3">
+                          <p className="font-medium text-foreground">Step 5: Check Resend dashboard for delivery details</p>
+                          <p className="mt-1">Log in to <a href="https://resend.com/emails" target="_blank" rel="noopener noreferrer" className="text-accent underline">resend.com/emails</a> and search for the message ID shown in the delivery history. Resend provides detailed delivery logs including bounce reasons.</p>
+                        </div>
+                        <div className="rounded-lg border border-border/60 p-3">
+                          <p className="font-medium text-foreground">Step 6: Configure webhooks for real-time delivery status</p>
+                          <p className="mt-1">Add <code>RESEND_WEBHOOK_SECRET</code> to your Convex environment variables and configure the webhook URL in Resend dashboard. This enables the app to receive delivery confirmations, bounce notices, and failure alerts automatically.</p>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -715,7 +787,7 @@ export default function CaseDetail() {
                             await sendTestEmailNow({ caseId: caseId as any, recipientEmail: user.email });
                             const procResult = await processDue();
                             if (procResult.accepted > 0) {
-                              setTestEmailResult({ success: true, message: `Test email accepted by provider. Check Inbox, Spam, Promotions and All Mail.` });
+                              setTestEmailResult({ success: true, message: `Test email accepted by Resend. This does not yet confirm Gmail inbox delivery. Check Inbox, Spam, Promotions and All Mail.` });
                             } else if (procResult.failed > 0) {
                               setTestEmailResult({ success: false, message: `Email could not be sent. Check your RESEND_API_KEY and EMAIL_FROM settings.` });
                             } else {
@@ -865,43 +937,68 @@ export default function CaseDetail() {
                           <p className="text-sm text-muted-foreground">No emails sent yet.</p>
                         ) : (
                           <div className="overflow-x-auto">
-                            <table className="w-full text-xs">
-                              <thead>
-                                <tr className="border-b border-border/60">
-                                  <th className="text-left py-2 pr-3 font-medium text-muted-foreground">Time</th>
-                                  <th className="text-left py-2 pr-3 font-medium text-muted-foreground">Recipient</th>
-                                  <th className="text-left py-2 pr-3 font-medium text-muted-foreground">Subject</th>
-                                  <th className="text-left py-2 pr-3 font-medium text-muted-foreground">Status</th>
-                                  <th className="text-left py-2 pr-3 font-medium text-muted-foreground">Message ID</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {deliveryLog.map((log: any) => (
-                                  <tr key={log._id} className="border-b border-border/30">
-                                    <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">
-                                      {new Date(log.completedAt || log.createdAt).toLocaleString("en-IN", { hour: "2-digit", minute: "2-digit", month: "short", day: "numeric" })}
-                                    </td>
-                                    <td className="py-2 pr-3">
-                                      <span className="capitalize">{log.recipientType.replace(/_/g, " ")}</span>
-                                      <span className="text-muted-foreground ml-1">{log.recipientEmail}</span>
-                                    </td>
-                                    <td className="py-2 pr-3 truncate max-w-[200px] text-muted-foreground">{log.subject}</td>
-                                    <td className="py-2 pr-3">
-                                      <Badge variant="outline" className={`text-[10px] ${
-                                        log.status === "accepted_by_provider" ? "bg-emerald-50 text-emerald-700" : 
-                                        log.status === "failed" ? "bg-red-50 text-red-700" : "bg-muted text-muted-foreground"
-                                      }`}>
-                                        {log.status.replace(/_/g, " ")}
-                                      </Badge>
-                                      {log.testMode && <Badge variant="outline" className="text-[9px] ml-1 bg-blue-50 text-blue-700">test</Badge>}
-                                    </td>
-                                    <td className="py-2 pr-3 font-mono text-[10px] text-muted-foreground">
-                                      {log.providerMessageId || "—"}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
+                            <div className="space-y-3">
+                              {deliveryLog.map((log: any) => {
+                                const STATUS_STYLES: Record<string, string> = {
+                                  queued: "bg-blue-50 text-blue-700 border-blue-200",
+                                  accepted_by_provider: "bg-emerald-50 text-emerald-700 border-emerald-200",
+                                  delivered: "bg-emerald-50 text-emerald-800 border-emerald-300",
+                                  bounced: "bg-red-50 text-red-700 border-red-200",
+                                  complained: "bg-red-50 text-red-800 border-red-300",
+                                  delayed: "bg-amber-50 text-amber-700 border-amber-200",
+                                  failed: "bg-red-50 text-red-700 border-red-200",
+                                  cancelled: "bg-muted text-muted-foreground border-border/60",
+                                };
+                                const STATUS_EXPLANATIONS: Record<string, string> = {
+                                  queued: "Email is queued for sending.",
+                                  accepted_by_provider: "Resend accepted the email. This does not yet confirm Gmail delivery. Check Inbox, Spam, Promotions and All Mail.",
+                                  delivered: "Recipient mail server accepted the email. It may still appear outside the Primary inbox.",
+                                  bounced: "The recipient mail server rejected the email. Check the bounce reason.",
+                                  complained: "The email was marked as spam or complaint by the recipient.",
+                                  delayed: "Delivery is delayed. The recipient mail server has not yet confirmed acceptance.",
+                                  failed: "The email could not be sent. Check sender verification, API configuration and recipient address.",
+                                  cancelled: "This email was cancelled before sending.",
+                                };
+                                return (
+                                  <div key={log._id} className="rounded-lg border border-border/60 p-3">
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <Badge variant="outline" className={`text-[10px] ${STATUS_STYLES[log.status] || "bg-muted text-muted-foreground"}`}>
+                                            {log.status.replace(/_/g, " ")}
+                                          </Badge>
+                                          {log.testMode && <Badge variant="outline" className="text-[9px] bg-blue-50 text-blue-700">test</Badge>}
+                                          <span className="text-[10px] text-muted-foreground">
+                                            {new Date(log.completedAt || log.createdAt).toLocaleString("en-IN", { hour: "2-digit", minute: "2-digit", month: "short", day: "numeric" })}
+                                          </span>
+                                        </div>
+                                        <p className="text-xs mt-1">To: <span className="font-medium">{log.recipientEmail}</span> <span className="text-muted-foreground">({log.recipientType.replace(/_/g, " ")})</span></p>
+                                        <p className="text-xs text-muted-foreground truncate mt-0.5">{log.subject}</p>
+                                        <p className="text-[10px] text-muted-foreground mt-1 italic">{STATUS_EXPLANATIONS[log.status] || ""}</p>
+                                        {log.bounceReason && (
+                                          <p className="text-[10px] text-red-600 mt-0.5">Bounce reason: {log.bounceReason}</p>
+                                        )}
+                                      </div>
+                                      <div className="flex flex-col items-end gap-1 shrink-0">
+                                        {log.providerMessageId && (
+                                          <a
+                                            href={`https://resend.com/emails/${log.providerMessageId}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-[10px] text-accent hover:underline font-mono"
+                                          >
+                                            View in Resend ↗
+                                          </a>
+                                        )}
+                                        {log.providerMessageId && (
+                                          <span className="text-[9px] text-muted-foreground font-mono">{log.providerMessageId.slice(0, 12)}…</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
                         )}
                       </div>
