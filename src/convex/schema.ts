@@ -153,26 +153,27 @@ const schema = defineSchema(
       isRead: v.boolean(), // NEW: read/unread flag
       metadata: v.optional(v.string()),
     }).index("by_user", ["userId"])
-      .index("by_user_unread", ["userId", "isRead"]),
-
-    // ── Email Schedules (Automated Email Composer) ─────────────
+      .index("by_user_unread", ["userId", "isRead"]),    // ── Email Schedules (Automated Email Composer) ─────────────
     emailSchedules: defineTable({
       caseId: v.id("cases"),
       userId: v.id("users"),
-      recipientType: v.string(), // bank_manager | bank_nodal | police_io | cyber_cell | other
+      recipientType: v.string(), // self_test | bank_manager | bank_nodal | investigating_officer | cyber_cell | custom
       recipientEmail: v.string(),
       recipientName: v.optional(v.string()),
       subjectTemplate: v.string(),
+      htmlBody: v.optional(v.string()),
       bodyTemplate: v.string(),
       intervalDays: v.number(), // 0 = send once
       maxSends: v.number(), // -1 = unlimited
       sendsCount: v.number(),
       nextSendAt: v.number(), // timestamp
       active: v.boolean(),
+      paused: v.optional(v.boolean()),
       testMode: v.optional(v.boolean()), // true = test email to user's own address
       lastSentAt: v.optional(v.number()),
       lastProviderMessageId: v.optional(v.string()),
       lastError: v.optional(v.string()),
+      sendingLockUntil: v.optional(v.number()), // prevents duplicate cron sends
       deliveryStatus: v.optional(v.string()), // draft | scheduled | sending | accepted_by_provider | failed | cancelled
       createdAt: v.number(),
       updatedAt: v.number(),
@@ -188,12 +189,18 @@ const schema = defineSchema(
       recipientEmail: v.string(),
       recipientType: v.string(),
       subject: v.string(),
-      deliveryStatus: v.string(), // accepted_by_provider | failed
+      status: v.string(), // draft | scheduled | sending | accepted_by_provider | failed | cancelled
+      provider: v.optional(v.string()), // "resend"
       providerMessageId: v.optional(v.string()),
-      error: v.optional(v.string()),
-      sentAt: v.number(),
+      errorMessage: v.optional(v.string()),
+      idempotencyKey: v.optional(v.string()),
+      testMode: v.optional(v.boolean()),
+      createdAt: v.number(),
+      attemptedAt: v.optional(v.number()),
+      completedAt: v.optional(v.number()),
     }).index("by_case", ["caseId"])
-      .index("by_user", ["userId"]),
+      .index("by_user", ["userId"])
+      .index("by_idempotency_key", ["idempotencyKey"]),
 
     // ── Detected Emails (Auto-read integration) ────────────────
     detectedEmails: defineTable({

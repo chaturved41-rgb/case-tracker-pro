@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
@@ -50,6 +50,10 @@ import {
   CalendarClock,
   X,
   Loader2,
+  Pause,
+  Play,
+  RefreshCw,
+  History,
 } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -159,8 +163,28 @@ export default function CaseDetail() {
     api.emailSchedules.getTemplates,
     caseId ? { caseId: caseId as any } : "skip",
   );
+  const deliveryLog = useQuery(
+    api.emailSchedules.listDeliveryLog,
+    caseId ? { caseId: caseId as any } : "skip",
+  );
   const createSchedule = useMutation(api.emailSchedules.createSchedule);
   const cancelSchedule = useMutation(api.emailSchedules.cancelSchedule);
+  const pauseSchedule = useMutation(api.emailSchedules.pauseSchedule);
+  const resumeSchedule = useMutation(api.emailSchedules.resumeSchedule);
+  const sendTestEmailNow = useMutation(api.emailSchedules.sendTestEmailNow);
+
+  // Email processor actions
+  const healthCheck = useAction(api.emailProcessor.healthCheck);
+  const processDue = useAction(api.emailProcessor.processDueSchedules);
+
+  // Email UI state
+  const [emailHealth, setEmailHealth] = useState<null | { configured: boolean; senderConfigured: boolean; safeError?: string }>(null);
+  const [testEmailSending, setTestEmailSending] = useState(false);
+  const [testEmailResult, setTestEmailResult] = useState<null | { success: boolean; message: string }>(null);
+  const [demoProcessing, setDemoProcessing] = useState(false);
+  const [demoResult, setDemoResult] = useState<null | { found: number; accepted: number; failed: number }>(null);
+  const [externalConfirmed, setExternalConfirmed] = useState(false);
+  const [showDeliveryHistory, setShowDeliveryHistory] = useState(false);
 
   const [automateDialogOpen, setAutomateDialogOpen] = useState(false);
   const [scheduleRecipient, setScheduleRecipient] = useState("");
@@ -642,56 +666,249 @@ export default function CaseDetail() {
 
             {/* ── Automate Emails Tab ── */}
             <TabsContent value="automate">
-              <Card className="border-border/70">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="text-sm font-semibold">Automated Emails</h3>
-                      <p className="text-xs text-muted-foreground mt-0.5">Schedule follow-up emails to bank officers, police, and others</p>
-                    </div>
-                    <Button size="sm" className="gap-1.5" onClick={() => setAutomateDialogOpen(true)}>
-                      <Plus className="h-3.5 w-3.5" /> New Schedule
-                    </Button>
-                  </div>
-
-                  {emailSchedules === undefined ? (
-                    <p className="text-sm text-muted-foreground">Loading...</p>
-                  ) : emailSchedules.length === 0 ? (
-                    <div className="text-center py-8">
-                      <Mail className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
-                      <p className="text-sm text-muted-foreground">No email schedules yet.</p>
-                      <p className="text-xs text-muted-foreground mt-1">Set up automated follow-ups to stay on top of your case.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {emailSchedules.map((sch: any) => (
-                        <div key={sch._id} className="rounded-lg border border-border/60 p-4">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <Badge variant="outline" className="capitalize text-[10px]">{sch.recipientType.replace(/_/g, " ")}</Badge>
-                                <Badge variant="outline" className={`text-[10px] ${sch.active ? "bg-emerald-50 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
-                                  {sch.active ? "Active" : "Cancelled"}
-                                </Badge>
-                              </div>
-                              <p className="text-sm mt-1.5">To: <span className="font-medium">{sch.recipientEmail}</span></p>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                Sent {sch.sendsCount}/{sch.maxSends === -1 ? "∞" : sch.maxSends} times
-                                {sch.intervalDays > 0 ? ` • Every ${sch.intervalDays} days` : " • Once"}
-                              </p>
-                            </div>
-                            {sch.active && (
-                              <Button variant="ghost" size="sm" className="text-destructive text-xs" onClick={async () => { await cancelSchedule({ scheduleId: sch._id }); toast.success("Schedule cancelled"); }}>
-                                Cancel
-                              </Button>
-                            )}
-                          </div>
+              <div className="space-y-4">
+                {/* Provider Status Card */}
+                <Card className="border-border/70">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`h-2.5 w-2.5 rounded-full ${emailHealth?.configured ? "bg-emerald-500" : emailHealth ? "bg-amber-500" : "bg-muted animate-pulse"}`} />
+                        <div>
+                          <p className="text-sm font-medium">
+                            {emailHealth === null ? "Checking email provider..." :
+                             emailHealth.configured ? "Email delivery configured" : "Email delivery setup required"}
+                          </p>
+                          {emailHealth?.safeError && (
+                            <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-line">{emailHealth.safeError}</p>
+                          )}
                         </div>
-                      ))}
+                      </div>
+                      <Button variant="outline" size="sm" className="gap-1.5" onClick={async () => {
+                        try {
+                          const result = await healthCheck();
+                          setEmailHealth(result);
+                        } catch { setEmailHealth({ configured: false, senderConfigured: false, safeError: "Could not check provider status." }); }
+                      }}>
+                        <RefreshCw className="h-3.5 w-3.5" /> Check Status
+                      </Button>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+
+                {/* Test Email Card */}
+                <Card className="border-border/70">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <p className="text-sm font-medium">Send Test Email</p>
+                        <p className="text-xs text-muted-foreground">Sends a real email to verify your delivery setup works.</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="gap-1.5"
+                        disabled={testEmailSending || !user?.email}
+                        onClick={async () => {
+                          if (!caseId || !user?.email) return;
+                          setTestEmailSending(true);
+                          setTestEmailResult(null);
+                          try {
+                            await sendTestEmailNow({ caseId: caseId as any, recipientEmail: user.email });
+                            const procResult = await processDue();
+                            if (procResult.accepted > 0) {
+                              setTestEmailResult({ success: true, message: `Test email accepted by provider. Check Inbox, Spam, Promotions and All Mail.` });
+                            } else if (procResult.failed > 0) {
+                              setTestEmailResult({ success: false, message: `Email could not be sent. Check your RESEND_API_KEY and EMAIL_FROM settings.` });
+                            } else {
+                              setTestEmailResult({ success: false, message: `No schedules were processed. Check email configuration.` });
+                            }
+                          } catch (e: any) {
+                            setTestEmailResult({ success: false, message: e?.message || "Failed to send test email." });
+                          } finally {
+                            setTestEmailSending(false);
+                          }
+                        }}
+                      >
+                        {testEmailSending ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Sending...</> : <><Mail className="h-3.5 w-3.5" /> Send Test Email</>}
+                      </Button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">Recipient: {user?.email || "(log in required)"} • Test mode — sends only to your own email.</p>
+                    {testEmailResult && (
+                      <div className={`mt-3 rounded-lg border p-3 text-xs ${testEmailResult.success ? "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800" : "bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800"}`}>
+                        {testEmailResult.message}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Run Due Scheduled Emails Now (Demo) */}
+                <Card className="border-border/70">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">Run Due Scheduled Emails Now (Demo)</p>
+                        <p className="text-xs text-muted-foreground">Preview/demo environments may not run background jobs continuously. This button runs the same scheduled-email processor manually.</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        disabled={demoProcessing}
+                        onClick={async () => {
+                          setDemoProcessing(true);
+                          setDemoResult(null);
+                          try {
+                            const result = await processDue();
+                            setDemoResult(result);
+                          } catch (e: any) {
+                            toast.error(e?.message || "Failed to process schedules.");
+                          } finally {
+                            setDemoProcessing(false);
+                          }
+                        }}
+                      >
+                        {demoProcessing ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Processing...</> : <><RefreshCw className="h-3.5 w-3.5" /> Run Now</>}
+                      </Button>
+                    </div>
+                    {demoResult && (
+                      <div className="mt-3 rounded-lg border border-border/60 p-3 text-xs text-muted-foreground">
+                        Found {demoResult.found} due schedule(s) • {demoResult.accepted} accepted by provider • {demoResult.failed} failed
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Schedules List */}
+                <Card className="border-border/70">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="text-sm font-semibold">Email Schedules</h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">Schedule follow-up emails to bank officers, police, and others</p>
+                      </div>
+                      <Button size="sm" className="gap-1.5" onClick={() => setAutomateDialogOpen(true)}>
+                        <Plus className="h-3.5 w-3.5" /> New Schedule
+                      </Button>
+                    </div>
+
+                    {emailSchedules === undefined ? (
+                      <p className="text-sm text-muted-foreground">Loading...</p>
+                    ) : emailSchedules.length === 0 ? (
+                      <div className="text-center py-8">
+                        <Mail className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
+                        <p className="text-sm text-muted-foreground">No email schedules yet.</p>
+                        <p className="text-xs text-muted-foreground mt-1">Set up automated follow-ups to stay on top of your case.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {emailSchedules.map((sch: any) => (
+                          <div key={sch._id} className="rounded-lg border border-border/60 p-4">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <Badge variant="outline" className="capitalize text-[10px]">{sch.recipientType.replace(/_/g, " ")}</Badge>
+                                  <Badge variant="outline" className={`text-[10px] ${sch.active && !sch.paused ? "bg-emerald-50 text-emerald-700" : sch.paused ? "bg-amber-50 text-amber-700" : "bg-muted text-muted-foreground"}`}>
+                                    {sch.paused ? "Paused" : sch.active ? "Active" : "Done"}
+                                  </Badge>
+                                  {sch.testMode && <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700">Test</Badge>}
+                                  {sch.lastError && <Badge variant="outline" className="text-[10px] bg-red-50 text-red-700">Error</Badge>}
+                                </div>
+                                <p className="text-sm mt-1.5">To: <span className="font-medium">{sch.recipientEmail}</span></p>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  Sent {sch.sendsCount}/{sch.maxSends === -1 ? "∞" : sch.maxSends} times
+                                  {sch.intervalDays > 0 ? ` • Every ${sch.intervalDays} days` : " • Once"}
+                                </p>
+                                {sch.lastError && (
+                                  <p className="text-xs text-red-600 mt-1">Last error: {sch.lastError}</p>
+                                )}
+                                {sch.lastProviderMessageId && (
+                                  <p className="text-[10px] text-muted-foreground mt-0.5 font-mono">Last ID: {sch.lastProviderMessageId}</p>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1 ml-3">
+                                {sch.active && !sch.paused && (
+                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-amber-600" onClick={async () => { await pauseSchedule({ scheduleId: sch._id }); toast.success("Schedule paused"); }}>
+                                    <Pause className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                                {sch.active && sch.paused && (
+                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-emerald-600" onClick={async () => { await resumeSchedule({ scheduleId: sch._id }); toast.success("Schedule resumed"); }}>
+                                    <Play className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                                {sch.active && (
+                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive" onClick={async () => { await cancelSchedule({ scheduleId: sch._id }); toast.success("Schedule cancelled"); }}>
+                                    <X className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Delivery History */}
+                <Card className="border-border/70">
+                  <CardContent className="p-4">
+                    <button className="flex items-center gap-2 text-sm font-medium w-full" onClick={() => setShowDeliveryHistory(!showDeliveryHistory)}>
+                      <History className="h-4 w-4" />
+                      Delivery History {deliveryLog ? `(${deliveryLog.length})` : ""}
+                      <ChevronLeft className={`h-4 w-4 ml-auto transition-transform ${showDeliveryHistory ? "rotate-[-90deg]" : "rotate-[-270deg]"}`} />
+                    </button>
+                    {showDeliveryHistory && (
+                      <div className="mt-4">
+                        {deliveryLog === undefined ? (
+                          <p className="text-sm text-muted-foreground">Loading...</p>
+                        ) : deliveryLog.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">No emails sent yet.</p>
+                        ) : (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-xs">
+                              <thead>
+                                <tr className="border-b border-border/60">
+                                  <th className="text-left py-2 pr-3 font-medium text-muted-foreground">Time</th>
+                                  <th className="text-left py-2 pr-3 font-medium text-muted-foreground">Recipient</th>
+                                  <th className="text-left py-2 pr-3 font-medium text-muted-foreground">Subject</th>
+                                  <th className="text-left py-2 pr-3 font-medium text-muted-foreground">Status</th>
+                                  <th className="text-left py-2 pr-3 font-medium text-muted-foreground">Message ID</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {deliveryLog.map((log: any) => (
+                                  <tr key={log._id} className="border-b border-border/30">
+                                    <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">
+                                      {new Date(log.completedAt || log.createdAt).toLocaleString("en-IN", { hour: "2-digit", minute: "2-digit", month: "short", day: "numeric" })}
+                                    </td>
+                                    <td className="py-2 pr-3">
+                                      <span className="capitalize">{log.recipientType.replace(/_/g, " ")}</span>
+                                      <span className="text-muted-foreground ml-1">{log.recipientEmail}</span>
+                                    </td>
+                                    <td className="py-2 pr-3 truncate max-w-[200px] text-muted-foreground">{log.subject}</td>
+                                    <td className="py-2 pr-3">
+                                      <Badge variant="outline" className={`text-[10px] ${
+                                        log.status === "accepted_by_provider" ? "bg-emerald-50 text-emerald-700" : 
+                                        log.status === "failed" ? "bg-red-50 text-red-700" : "bg-muted text-muted-foreground"
+                                      }`}>
+                                        {log.status.replace(/_/g, " ")}
+                                      </Badge>
+                                      {log.testMode && <Badge variant="outline" className="text-[9px] ml-1 bg-blue-50 text-blue-700">test</Badge>}
+                                    </td>
+                                    <td className="py-2 pr-3 font-mono text-[10px] text-muted-foreground">
+                                      {log.providerMessageId || "—"}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
 
             {/* ── Notifications Tab ── */}
@@ -978,11 +1195,12 @@ export default function CaseDetail() {
               }}>
                 <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select recipient" /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="self_test">My Own Email (Test)</SelectItem>
                   <SelectItem value="bank_manager">Bank Branch Manager</SelectItem>
                   <SelectItem value="bank_nodal">Bank Nodal Officer</SelectItem>
-                  <SelectItem value="police_io">Police Station / IO</SelectItem>
+                  <SelectItem value="police_io">Investigating Officer / Police</SelectItem>
                   <SelectItem value="cyber_cell">Cyber Cell</SelectItem>
-                  <SelectItem value="other">Other (Custom)</SelectItem>
+                  <SelectItem value="custom">Custom Recipient</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1030,12 +1248,26 @@ export default function CaseDetail() {
                 </pre>
               </div>
             )}
+            {scheduleRecipient && scheduleRecipient !== "self_test" && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:bg-amber-950 dark:border-amber-800">
+                <p className="text-xs text-amber-700 dark:text-amber-300 mb-2">⚠️ For hackathon use, choose your own email or a controlled test inbox. Do not send repeated messages to real banks, police stations or government addresses without explicit permission.</p>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input type="checkbox" checked={externalConfirmed} onChange={(e) => setExternalConfirmed(e.target.checked)} className="mt-0.5 rounded" />
+                  <span className="text-xs text-amber-700 dark:text-amber-300">I confirm that I have verified this recipient address and have authority to send this communication.</span>
+                </label>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAutomateDialogOpen(false)}>Cancel</Button>
             <Button
               onClick={async () => {
-                if (!scheduleRecipient || !scheduleEmail.trim()) return;
+                const email = scheduleRecipient === "self_test" ? (user?.email || scheduleEmail.trim()) : scheduleEmail.trim();
+                if (!scheduleRecipient || !email) return;
+                if (scheduleRecipient !== "self_test" && !externalConfirmed) {
+                  toast.error("Please confirm the recipient address.");
+                  return;
+                }
                 try {
                   let subject = "Follow-up regarding account " + caseData.accountMasked;
                   let body = "Default follow-up email body.";
@@ -1049,7 +1281,7 @@ export default function CaseDetail() {
                   await createSchedule({
                     caseId: caseId as any,
                     recipientType: scheduleRecipient,
-                    recipientEmail: scheduleEmail.trim(),
+                    recipientEmail: email,
                     subjectTemplate: subject,
                     bodyTemplate: body,
                     intervalDays: parseInt(scheduleInterval),
@@ -1060,11 +1292,12 @@ export default function CaseDetail() {
                   setAutomateDialogOpen(false);
                   setScheduleRecipient("");
                   setScheduleEmail("");
+                  setExternalConfirmed(false);
                 } catch (e) {
                   toast.error("Failed to create schedule");
                 }
               }}
-              disabled={!scheduleRecipient || !scheduleEmail.trim()}
+              disabled={!scheduleRecipient || !(scheduleRecipient === "self_test" ? user?.email : scheduleEmail.trim()) || (scheduleRecipient !== "self_test" && !externalConfirmed)}
             >
               Create Schedule
             </Button>
