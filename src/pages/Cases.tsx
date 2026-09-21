@@ -106,7 +106,7 @@ export default function CasesPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => navigate("/analyze")}
+                onClick={() => navigate("/analyze-freeze")}
                 className="gap-1.5"
               >
                 <Camera className="h-4 w-4" />

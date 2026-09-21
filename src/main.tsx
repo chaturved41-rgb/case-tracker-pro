@@ -27,6 +27,10 @@ const Terms = lazy(() => import("./pages/Terms.tsx"));
 const Privacy = lazy(() => import("./pages/Privacy.tsx"));
 const Settings = lazy(() => import("./pages/Settings.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
+const Analyze = lazy(() => import("./pages/Analyze.tsx"));
+const AnalysisResult = lazy(() => import("./pages/AnalysisResult.tsx"));
+const HowItWorks = lazy(() => import("./pages/HowItWorks.tsx"));
+const Help = lazy(() => import("./pages/Help.tsx"));
 
 // ── Simple loading fallback ──────────────────────────────────
 function RouteLoading() {
@@ -179,6 +183,13 @@ const router = createBrowserRouter([
       },
       {
         path: "/analyze",
+        element: <Analyze />,
+      },
+      { path: "/result/:resultId", element: <AnalysisResult /> },
+      { path: "/how-it-works", element: <HowItWorks /> },
+      { path: "/help", element: <Help /> },
+      {
+        path: "/analyze-freeze",
         element: (
           <RequireAuth>
             <AnalyzeScreenshot />

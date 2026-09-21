@@ -45,7 +45,11 @@ export default function Terms() {
           </Section>
 
           <Section title="2. What DIP Provides">
-            DIP is a citizen-facing tool that helps users organise evidence, generate structured reports, and track case timelines when their bank accounts are frozen due to cyber-fraud investigations. DIP provides templates for letters and emails, consistency checks on evidence, and automated follow-up scheduling.
+            DIP is a privacy-first digital trust assistant. Its public trust analysis checks submitted messages, links, accounts, payment requests, and screenshot text for observable warning signals, and produces an explainable assessment with recommended next actions. Registered users additionally get an evidence-organisation workspace for frozen bank account cases, with structured reports, consistency checks, timeline tracking, and scheduled follow-up emails.
+          </Section>
+
+          <Section title="2a. Nature of Trust Analysis Results">
+            Trust analysis results are decision support, not legal proof. DIP does not determine guilt or innocence, does not confirm that any website, account, or message is safe or unsafe, and cannot verify the identity or intent of any sender. A "Low concern" result is not a certificate of safety. Every result states its limitations, and the prototype risk indicator is not a probability of fraud.
           </Section>
 
           <Section title="3. What DIP Does NOT Do">

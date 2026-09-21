@@ -1,16 +1,19 @@
 import { motion } from "framer-motion";
-import { useAuth } from "@/hooks/use-auth";
 import { useNavigate } from "react-router";
 import {
   Shield,
-  FileText,
-  Clock,
-  AlertTriangle,
+  MessageSquare,
+  Globe,
+  User,
+  Wallet,
+  Image as ImageIcon,
   ChevronRight,
   Lock,
   Eye,
-  BarChart3,
-  Mail,
+  Check,
+  FileText,
+  Sparkles,
+  AlertTriangle,
 } from "lucide-react";
 
 const fadeInUp = {
@@ -19,39 +22,36 @@ const fadeInUp = {
   transition: { duration: 0.5 },
 };
 
-const staggerChildren = {
-  animate: { transition: { staggerChildren: 0.1 } },
-};
+const analysisTypes = [
+  { icon: MessageSquare, label: "Message or email" },
+  { icon: Globe, label: "Website link" },
+  { icon: User, label: "Account or username" },
+  { icon: Wallet, label: "Payment request" },
+  { icon: ImageIcon, label: "Screenshot or conversation" },
+];
 
-const features = [
+const pillars = [
   {
     icon: FileText,
-    title: "Structured Evidence Reports",
+    title: "Explainable results",
     description:
-      "Auto-generate machine-readable and human-readable reports from your evidence. Consistent, professional, ready to share.",
+      "Every assessment lists the exact signals found, why they matter, and what DIP cannot determine.",
   },
   {
-    icon: Clock,
-    title: "Case Timeline Tracking",
+    icon: Lock,
+    title: "Privacy-first design",
     description:
-      "Track every milestone — from first report to follow-ups at Day 7, 30, and 90. Never lose sight of what's next.",
+      "Analyses run in your browser. Results stay in your current session — nothing is uploaded to a server.",
   },
   {
-    icon: Mail,
-    title: "Draft Escalation Letters",
+    icon: Check,
+    title: "No passwords or OTPs required",
     description:
-      "Generate ready-to-send letters for bank nodal officers, grievance officers, SP offices, and RBI Ombudsman.",
-  },
-  {
-    icon: BarChart3,
-    title: "Consistency Checks",
-    description:
-      "Automated checks verify amounts, dates, and names across your evidence. Catch gaps before you submit.",
+      "DIP never asks for credentials. Sensitive data is actively detected and blocked before analysis.",
   },
 ];
 
 export default function Landing() {
-  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   return (
@@ -64,29 +64,35 @@ export default function Landing() {
               D
             </div>
             <span className="text-lg font-semibold tracking-tight">DIP</span>
+            <span className="hidden text-xs text-muted-foreground sm:block">
+              Trust &amp; Safety Assistant
+            </span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4 sm:gap-6">
+            <button
+              onClick={() => navigate("/how-it-works")}
+              className="hidden text-sm text-muted-foreground hover:text-foreground transition-colors sm:block"
+            >
+              How it works
+            </button>
+            <button
+              onClick={() => navigate("/privacy")}
+              className="hidden text-sm text-muted-foreground hover:text-foreground transition-colors sm:block"
+            >
+              Privacy
+            </button>
             <button
               onClick={() => navigate("/about")}
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               About
             </button>
-            {isAuthenticated ? (
-              <button
-                onClick={() => navigate("/cases")}
-                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-              >
-                My Cases
-              </button>
-            ) : (
-              <button
-                onClick={() => navigate("/auth")}
-                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-              >
-                Sign In
-              </button>
-            )}
+            <button
+              onClick={() => navigate("/analyze")}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              Analyze safely
+            </button>
           </div>
         </div>
       </nav>
@@ -106,144 +112,140 @@ export default function Landing() {
             transition={{ duration: 0.7, delay: 0.1 }}
             className="max-w-3xl"
           >
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/5 px-3.5 py-1.5 text-xs font-medium text-accent">
+            <div className="mb-6 inline-flex flex-wrap items-center gap-2 rounded-full border border-accent/20 bg-accent/5 px-3.5 py-1.5 text-xs font-medium text-accent">
               <Shield className="h-3.5 w-3.5" />
-              Citizen-first evidence protection
+              DIP — Digital Innocence Protocol · Verify before you trust.
             </div>
 
             <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl md:text-6xl">
-              Digital Innocence
+              Verify before
               <br />
-              <span className="text-accent">Protocol</span>
+              <span className="text-accent">you trust.</span>
             </h1>
 
             <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">
-              When your bank account is frozen due to a cyber-fraud investigation, you need a
-              structured way to prove your innocence. DIP helps you organise evidence, generate
-              professional reports, and track every step toward resolution.
+              DIP analyzes suspicious digital messages, links, accounts, and requests to identify
+              warning signals and explain what you should do next.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">
               <button
-                onClick={() =>
-                  navigate(isAuthenticated ? "/new-case" : "/auth?returnTo=/new-case")
-                }
+                onClick={() => navigate("/analyze")}
                 className="group inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all"
               >
-                My account is frozen — Start here
+                Analyze safely
                 <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </button>
               <button
-                onClick={() => navigate("/about")}
+                onClick={() => navigate("/how-it-works")}
                 className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-6 py-3 text-sm font-medium text-card-foreground hover:bg-accent/5 transition-colors"
               >
-                Learn more
+                See how it works
               </button>
             </div>
+
+            <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
+              {["Explainable results", "Privacy-first design", "No passwords or OTPs required"].map(
+                (t) => (
+                  <li key={t} className="flex items-center gap-1.5">
+                    <Check className="h-4 w-4 text-accent" />
+                    {t}
+                  </li>
+                ),
+              )}
+            </ul>
           </motion.div>
         </div>
       </motion.section>
 
-      {/* ── Features ── */}
+      {/* ── Why digital trust is difficult ── */}
       <section className="border-t border-border/60 bg-card/50">
         <div className="mx-auto max-w-6xl px-6 py-20">
-          <motion.div
-            variants={staggerChildren}
-            initial="initial"
-            whileInView="animate"
-            viewport={{ once: true, margin: "-50px" }}
-            className="text-center mb-14"
-          >
-            <motion.p
-              variants={fadeInUp}
-              className="text-sm font-medium text-accent uppercase tracking-wider"
+          <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
             >
-              How DIP helps
-            </motion.p>
-            <motion.h2
-              variants={fadeInUp}
-              className="mt-3 text-3xl font-bold tracking-tight"
-            >
-              Everything you need to build your case
-            </motion.h2>
-            <motion.p
-              variants={fadeInUp}
-              className="mt-3 text-muted-foreground max-w-lg mx-auto"
-            >
-              From evidence collection to escalation letters — DIP gives you the tools to
-              present a clear, organised explanation.
-            </motion.p>
-          </motion.div>
-
-          <motion.div
-            variants={staggerChildren}
-            initial="initial"
-            whileInView="animate"
-            viewport={{ once: true, margin: "-50px" }}
-            className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4"
-          >
-            {features.map((f) => (
-              <motion.div
-                key={f.title}
-                variants={fadeInUp}
-                className="group rounded-2xl border border-border/70 bg-card p-6 shadow-sm hover:shadow-md hover:border-accent/30 transition-all"
-              >
-                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-accent/10 text-accent group-hover:bg-accent/15 transition-colors">
-                  <f.icon className="h-5 w-5" />
-                </div>
-                <h3 className="text-base font-semibold">{f.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  {f.description}
+              <p className="text-sm font-medium text-accent uppercase tracking-wider">
+                The problem
+              </p>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight">
+                Digital trust is hard — and the stakes keep rising
+              </h2>
+              <div className="mt-5 space-y-4 text-sm leading-relaxed text-muted-foreground">
+                <p>
+                  People often receive online messages, links, and requests without a simple way to
+                  understand whether they contain warning signals. Scams create urgency, impersonate
+                  trusted brands, and pressure people into acting before they can verify anything.
                 </p>
-              </motion.div>
-            ))}
-          </motion.div>
+                <p>
+                  Existing tools focus on blocking threats or scanning technical indicators. But
+                  when a confusing message arrives, an ordinary person is left alone with three
+                  questions: <em className="text-foreground">Is this risky? Why? What should I do?</em>
+                </p>
+              </div>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm"
+            >
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                What a user is usually shown
+              </p>
+              <div className="mt-4 space-y-3 text-sm">
+                <div className="rounded-lg border border-border/60 bg-muted/40 p-3 text-muted-foreground line-through decoration-destructive/60">
+                  "Blocklisted domain. Threat score 87/100."
+                </div>
+                <div className="rounded-lg border border-accent/30 bg-accent/5 p-3">
+                  <p className="font-semibold">What DIP shows instead</p>
+                  <p className="mt-1 text-muted-foreground">
+                    "The message creates urgency and the link does not match the sender's claimed
+                    organisation. Here is what to check — and what DIP cannot confirm."
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          </div>
         </div>
       </section>
 
-      {/* ── How it works ── */}
+      {/* ── How DIP works ── */}
       <section className="border-t border-border/60">
         <div className="mx-auto max-w-6xl px-6 py-20">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-14"
+            className="text-center"
           >
-            <p className="text-sm font-medium text-accent uppercase tracking-wider">
-              Simple process
-            </p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight">
-              From freeze to resolution in 5 steps
-            </h2>
+            <p className="text-sm font-medium text-accent uppercase tracking-wider">How DIP works</p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight">Four steps to a safer decision</h2>
           </motion.div>
-
-          <div className="grid gap-8 md:grid-cols-5">
+          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {[
               {
                 step: "1",
-                title: "Enter freeze details",
-                desc: "Bank, account (masked), freeze type and date",
+                title: "Submit only what's needed",
+                desc: "Pick a category and add the message, link, or account — never secrets.",
               },
               {
                 step: "2",
-                title: "Add the transaction",
-                desc: "Date, amount, sender, purpose, and your story",
+                title: "DIP checks warning signals",
+                desc: "A transparent rule engine looks for known risk patterns, fully explainable.",
               },
               {
                 step: "3",
-                title: "Upload evidence",
-                desc: "Invoices, receipts, chats, delivery proofs",
+                title: "DIP explains the assessment",
+                desc: "Each signal comes with its reason, its weight, and honest limitations.",
               },
               {
                 step: "4",
-                title: "Get your report",
-                desc: "Auto-generated PDF + JSON with consistency checks",
-              },
-              {
-                step: "5",
-                title: "Track & escalate",
-                desc: "Timeline, follow-ups, and draft escalation letters",
+                title: "You decide the next action",
+                desc: "Clear recommendations help you verify, avoid, report, or proceed with caution.",
               },
             ].map((item, i) => (
               <motion.div
@@ -251,67 +253,154 @@ export default function Landing() {
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="text-center"
+                transition={{ delay: i * 0.08 }}
+                className="rounded-2xl border border-border/70 bg-card p-6"
               >
-                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">
+                <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">
                   {item.step}
                 </div>
                 <h3 className="text-sm font-semibold">{item.title}</h3>
-                <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                  {item.desc}
-                </p>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.desc}</p>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Ethics Box ── */}
+      {/* ── Supported analysis types ── */}
       <section className="border-t border-border/60 bg-card/50">
         <div className="mx-auto max-w-6xl px-6 py-20">
+          <div className="text-center">
+            <p className="text-sm font-medium text-accent uppercase tracking-wider">
+              Supported analyses
+            </p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight">
+              Five kinds of suspicious content
+            </h2>
+          </div>
+          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            {analysisTypes.map((t, i) => (
+              <motion.div
+                key={t.label}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.06 }}
+                className="flex flex-col items-center gap-3 rounded-2xl border border-border/70 bg-background p-6 text-center"
+              >
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent/10 text-accent">
+                  <t.icon className="h-5 w-5" />
+                </span>
+                <span className="text-sm font-medium">{t.label}</span>
+              </motion.div>
+            ))}
+          </div>
+          <div className="mt-10 text-center">
+            <button
+              onClick={() => navigate("/analyze")}
+              className="group inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all"
+            >
+              <Sparkles className="h-4 w-4" />
+              Try Demo Mode — no signup needed
+              <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </button>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Three synthetic examples run the full workflow in under a minute.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Privacy promise ── */}
+      <section className="border-t border-border/60">
+        <div className="mx-auto max-w-6xl px-6 py-20">
+          <div className="mx-auto max-w-3xl rounded-2xl border border-accent/20 bg-accent/5 p-8">
+            <div className="flex items-start gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent">
+                <Eye className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold">Our privacy promise</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  DIP is designed to minimize data collection. Submit only the information needed
+                  for the analysis. Never submit passwords, OTPs, PINs, private keys, full
+                  payment-card details, or government identification numbers.
+                </p>
+                <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+                  <li className="flex items-start gap-2">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+                    Analysis runs locally in your browser — submissions are not uploaded.
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+                    Results are stored only for your current session and disappear when you close
+                    the tab.
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+                    DIP does not determine guilt or innocence. It identifies observable digital
+                    risk signals and helps users make safer decisions.
+                  </li>
+                </ul>
+                <button
+                  onClick={() => navigate("/privacy")}
+                  className="mt-5 text-sm font-medium text-accent underline-offset-4 hover:underline"
+                >
+                  Read the full Privacy &amp; Safety policy →
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Example result ── */}
+      <section className="border-t border-border/60 bg-card/50">
+        <div className="mx-auto max-w-6xl px-6 py-20">
+          <div className="text-center">
+            <p className="text-sm font-medium text-accent uppercase tracking-wider">
+              Example result
+            </p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight">
+              What an assessment looks like
+            </h2>
+            <p className="mx-auto mt-3 max-w-lg text-sm text-muted-foreground">
+              Synthetic demonstration data — not a real report.
+            </p>
+          </div>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="mx-auto max-w-3xl"
+            className="mx-auto mt-10 max-w-2xl rounded-2xl border border-destructive/25 bg-card p-6 shadow-sm"
           >
-            <div className="rounded-2xl border border-accent/20 bg-accent/5 p-8">
-              <div className="flex items-start gap-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent">
-                  <AlertTriangle className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold">What DIP is — and isn't</h3>
-                  <div className="mt-4 space-y-3 text-sm leading-relaxed text-muted-foreground">
-                    <div className="flex items-start gap-3">
-                      <Lock className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
-                      <span>
-                        <strong className="text-foreground">DIP is a tool.</strong> It helps you
-                        organise evidence and present it professionally. It does not make legal
-                        decisions.
-                      </span>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <Eye className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
-                      <span>
-                        <strong className="text-foreground">DIP does not certify innocence.</strong>{" "}
-                        It helps you tell your story clearly — you are responsible for the
-                        truthfulness of your submission.
-                      </span>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <Shield className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
-                      <span>
-                        <strong className="text-foreground">DIP cannot unfreeze accounts.</strong>{" "}
-                        Resolution depends on the bank, police, and legal authorities. DIP gives
-                        you structure and tracking.
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span className="inline-flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-1.5 text-sm font-semibold text-destructive">
+                <Shield className="h-4 w-4" />
+                High concern
+              </span>
+              <span className="text-xs text-muted-foreground">Message or email</span>
             </div>
+            <p className="mt-4 text-sm leading-relaxed">
+              This submission contains several warning signals that require caution.
+            </p>
+            <div className="mt-4 space-y-2 text-sm">
+              {[
+                "The message requests sensitive information.",
+                "It creates urgency to act immediately.",
+                "It promises an unexpected prize.",
+              ].map((s) => (
+                <div key={s} className="flex items-start gap-2 rounded-lg border border-border/60 bg-muted/30 p-2.5">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive" />
+                  {s}
+                </div>
+              ))}
+            </div>
+            <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
+              Recommended: Do not share OTPs or payment details. Verify through the organisation's
+              official website or phone number. DIP cannot confirm the sender's true identity or
+              determine intent from this information alone.
+            </p>
           </motion.div>
         </div>
       </section>
@@ -325,19 +414,16 @@ export default function Landing() {
             viewport={{ once: true }}
           >
             <h2 className="text-3xl font-bold tracking-tight">
-              Ready to take control of your case?
+              Received something suspicious?
             </h2>
-            <p className="mt-3 text-muted-foreground max-w-md mx-auto">
-              Start documenting your evidence today. It's free, private, and designed to help you
-              navigate the process.
+            <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground">
+              Get an explainable assessment before you trust, reply, pay, or share information.
             </p>
             <button
-              onClick={() =>
-                navigate(isAuthenticated ? "/new-case" : "/auth?returnTo=/new-case")
-              }
+              onClick={() => navigate("/analyze")}
               className="group mt-8 inline-flex items-center gap-2 rounded-xl bg-primary px-8 py-3.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all"
             >
-              Start your case now
+              Analyze safely
               <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </button>
           </motion.div>
@@ -353,9 +439,12 @@ export default function Landing() {
             </div>
             © 2026 DIP — Digital Innocence Protocol
           </div>
-          <div className="flex gap-6 text-xs text-muted-foreground">
-            <button onClick={() => navigate("/about")} className="hover:text-foreground transition-colors">
-              About
+          <div className="flex flex-wrap justify-center gap-6 text-xs text-muted-foreground">
+            <button onClick={() => navigate("/how-it-works")} className="hover:text-foreground transition-colors">
+              How it works
+            </button>
+            <button onClick={() => navigate("/help")} className="hover:text-foreground transition-colors">
+              Help
             </button>
             <button onClick={() => navigate("/privacy")} className="hover:text-foreground transition-colors">
               Privacy
@@ -363,7 +452,9 @@ export default function Landing() {
             <button onClick={() => navigate("/terms")} className="hover:text-foreground transition-colors">
               Terms
             </button>
-            <span className="cursor-default">Contact</span>
+            <button onClick={() => navigate("/about")} className="hover:text-foreground transition-colors">
+              About
+            </button>
           </div>
         </div>
       </footer>

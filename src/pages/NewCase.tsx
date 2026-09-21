@@ -328,7 +328,7 @@ export default function NewCase() {
             <span className="font-semibold tracking-tight">New Case</span>
           </div>
           <button
-            onClick={() => navigate("/analyze")}
+            onClick={() => navigate("/analyze-freeze")}
             className="flex items-center gap-1.5 text-xs text-accent hover:text-accent/80 transition-colors"
           >
             <Camera className="h-3.5 w-3.5" />
