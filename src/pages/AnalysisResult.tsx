@@ -28,6 +28,7 @@ import {
 } from "@/lib/trustAnalysis";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ShareButton } from "@/components/ShareButton";
 import { cn } from "@/lib/utils";
 
 const RISK_STYLES: Record<RiskLevel, { chip: string; Icon: typeof ShieldQuestion }> = {
@@ -295,6 +296,10 @@ export default function AnalysisResult() {
             Reports redact detected secrets and never include passwords, OTPs, or PINs.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
+            <ShareButton
+              title="DIP trust analysis"
+              text={`DIP assessment: ${RISK_LABELS[a.riskLevel]} — ${RISK_EXPLANATIONS[a.riskLevel]}\n\n${reportText}`}
+            />
             <Button variant="outline" onClick={downloadReport} className="gap-2">
               <Download className="h-4 w-4" /> Download report
             </Button>

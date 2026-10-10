@@ -26,6 +26,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import { ShareButton } from "@/components/ShareButton";
 import { toast } from "sonner";
 import {
   ChevronLeft,
@@ -366,6 +367,10 @@ export default function CaseDetail() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
+                  <ShareButton
+                    title={`DIP case — ${caseData.bankName}`}
+                    text={`DIP case: ${caseData.bankName} (account ${caseData.accountMasked}) frozen since ${caseData.freezeDate}. Disputed amount ₹${caseData.transactionAmount.toLocaleString("en-IN")}. Status: ${caseData.resolutionStatus}.`}
+                  />
                   <Select value={caseData.resolutionStatus} onValueChange={handleStatusChange}>
                     <SelectTrigger className="w-[160px] h-9">
                       <SelectValue />

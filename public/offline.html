@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#111827" />
+  <title>Offline — DIP</title>
+  <link rel="icon" type="image/png" href="/icons/favicon-32.png" />
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: #111827;
+      color: #F9FAFB;
+    }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+    .card {
+      text-align: center;
+      max-width: 22rem;
+      padding: 1.5rem;
+    }
+    .badge {
+      width: 5.5rem;
+      height: 5.5rem;
+      margin: 0 auto 1.5rem;
+      border-radius: 1.25rem;
+      background: linear-gradient(135deg, #1F2937, #111827);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+    }
+    .badge img { width: 3.5rem; height: 3.5rem; }
+    h1 { font-size: 1.375rem; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 0.5rem; }
+    p { font-size: 0.9rem; line-height: 1.55; color: #9CA3AF; margin: 0 0 1.75rem; }
+    button {
+      width: 100%;
+      min-height: 3rem;
+      border: 0;
+      border-radius: 0.75rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #0F172A;
+      background: linear-gradient(135deg, #2FA8B5, #177E8C);
+      cursor: pointer;
+    }
+    button:active { opacity: 0.85; }
+    .hint { margin-top: 1rem; font-size: 0.75rem; color: #6B7280; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="badge">
+      <img src="/icons/icon-192.png" alt="DIP" />
+    </div>
+    <h1>You're offline</h1>
+    <p>DIP can't reach the internet right now. Pages you've already opened are still available, and everything syncs once you're back online.</p>
+    <button onclick="location.reload()">Try again</button>
+    <p class="hint">Your case data is safe and stored securely.</p>
+  </main>
+</body>
+</html>

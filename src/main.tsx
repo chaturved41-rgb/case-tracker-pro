@@ -1,17 +1,22 @@
 import { Toaster } from "@/components/ui/sonner";
 import { RequireAuth } from "@/components/RequireAuth";
 import { CookieConsent } from "@/components/CookieConsent";
+import { BottomNav } from "@/components/BottomNav";
+import {
+  InstallBanner,
+  OfflineBanner,
+  PageTransition,
+  PwaServiceWorkerBridge,
+} from "@/components/PwaChrome";
+import { SplashScreen } from "@/components/SplashScreen";
+import { LockScreen } from "@/components/LockScreen";
+import { useAppLock } from "@/lib/appLock";
 import { VlyToolbar } from "../vly-toolbar-readonly.tsx";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
 import React, { StrictMode, Suspense, lazy, useEffect } from "react";
 import { createRoot } from "react-dom/client";
-import {
-  createBrowserRouter,
-  RouterProvider,
-  Outlet,
-  useLocation,
-} from "react-router";
+import { createBrowserRouter, RouterProvider, Outlet, useLocation } from "react-router";
 import "./index.css";
 
 // ── Lazy-loaded page components ───────────────────────────────
@@ -38,6 +43,35 @@ function RouteLoading() {
     <div className="min-h-screen flex items-center justify-center">
       <div className="animate-pulse text-muted-foreground">Loading...</div>
     </div>
+  );
+}
+
+// ── PWA boot helpers ─────────────────────────────────────────
+function removeBootSplash() {
+  const splash = document.getElementById("boot-splash");
+  if (splash) {
+    splash.classList.add("boot-hide");
+    window.setTimeout(() => splash.remove(), 350);
+  }
+}
+
+/** Wraps the router so we can gate rendering on the device lock. */
+function AppWithLock() {
+  const { isLocked, unlock } = useAppLock();
+
+  useEffect(() => {
+    removeBootSplash();
+  }, []);
+
+  return (
+    <>
+      <SplashScreen ready={!isLocked} />
+      {isLocked ? (
+        <LockScreen onUnlock={unlock} />
+      ) : (
+        <RouterProvider router={router} />
+      )}
+    </>
   );
 }
 
@@ -127,13 +161,24 @@ function RootLayout() {
   return (
     <>
       <RouteSyncer />
-      <Suspense fallback={<RouteLoading />}>
-        <Outlet />
-      </Suspense>
+      <OfflineBanner />
+      <PageTransition>
+        <Suspense fallback={<RouteLoading />}>
+          <Outlet />
+        </Suspense>
+      </PageTransition>
+      <BottomNavSpacer />
+      <BottomNav />
+      <InstallBanner />
       <CookieConsent />
       <Toaster />
     </>
   );
+}
+
+/** Reserves bottom space on mobile so content clears the bottom nav. */
+function BottomNavSpacer() {
+  return <div aria-hidden className="h-20 md:hidden" />;
 }
 
 // ── Router configuration ─────────────────────────────────────
@@ -210,15 +255,26 @@ const router = createBrowserRouter([
 ]);
 
 // ── Render ───────────────────────────────────────────────────
-createRoot(document.getElementById("root")!).render(
+const root = createRoot(document.getElementById("root")!);
+root.render(
   <StrictMode>
     <RootErrorBoundary>
       <ToolbarErrorBoundary>
         <VlyToolbar />
       </ToolbarErrorBoundary>
       <ConvexAuthProvider client={convex}>
-        <RouterProvider router={router} />
+        <AppWithLock />
+        <PwaServiceWorkerBridge />
       </ConvexAuthProvider>
     </RootErrorBoundary>
   </StrictMode>,
 );
+
+// Register the service worker after first paint (non-blocking).
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    void import("@/lib/pwa").then(({ registerServiceWorker }) =>
+      registerServiceWorker(),
+    );
+  });
+}

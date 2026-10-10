@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1F2937"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="shield" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2FA8B5"/>
+      <stop offset="1" stop-color="#177E8C"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded-square tile (safe for unmasked "any" rendering) -->
+  <rect width="1024" height="1024" rx="228" fill="url(#bg)"/>
+
+  <!-- Faint concentric security rings -->
+  <circle cx="512" cy="512" r="392" fill="none" stroke="#FFFFFF" stroke-opacity="0.05" stroke-width="24"/>
+  <circle cx="512" cy="512" r="470" fill="none" stroke="#FFFFFF" stroke-opacity="0.03" stroke-width="24"/>
+
+  <!-- Shield -->
+  <path d="M512 196
+           c 118 62 216 84 268 92
+           c 6 132 -12 344 -110 470
+           c -62 80 -122 118 -158 134
+           c -36 -16 -96 -54 -158 -134
+           c -98 -126 -116 -338 -110 -470
+           c 52 -8 150 -30 268 -92 Z"
+        fill="url(#shield)"/>
+
+  <!-- Keyhole notch -->
+  <circle cx="512" cy="540" r="74" fill="#111827"/>
+  <path d="M512 566 L486 704 h52 Z" fill="#111827"/>
+
+  <!-- Check -->
+  <path d="M418 438 l72 70 138 -140"
+        fill="none" stroke="#FFFFFF" stroke-width="56"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

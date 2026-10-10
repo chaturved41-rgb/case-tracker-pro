@@ -124,3 +124,39 @@
     cursor: pointer;
   }
 }
+
+/* ── PWA / mobile app additions (additive; safe areas & touch) ── */
+@layer base {
+  /* App-like scrolling: prevent rubber-band overscroll chaining in standalone mode */
+  html {
+    overscroll-behavior-y: none;
+  }
+  /* Comfortable tap targets & no gray flash on tap (mobile webkit) */
+  button,
+  a,
+  [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+}
+
+@layer utilities {
+  /* Safe-area helpers for notched phones (use with padding utilities) */
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .mb-safe {
+    margin-bottom: env(safe-area-inset-bottom);
+  }
+  /* Bottom spacing that clears the fixed bottom nav + home indicator */
+  .pb-nav {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+  }
+  /* Full-height layout that accounts for mobile browser chrome */
+  .min-h-app {
+    min-height: 100dvh;
+  }
+}

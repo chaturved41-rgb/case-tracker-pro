@@ -18,6 +18,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { CameraCapture, CapturePreview } from "@/components/CameraCapture";
 import { toast } from "sonner";
 import {
   ChevronLeft,
@@ -238,6 +239,19 @@ export default function NewCase() {
       notes: "",
     }));
     updateField("evidenceFiles", [...form.evidenceFiles, ...newFiles]);
+  };
+
+  const addEvidenceFileFromCapture = (file: File) => {
+    const entry: EvidenceFile = {
+      id: Math.random().toString(36).slice(2),
+      file,
+      type: "chat_screenshot",
+      metadataDate: "",
+      metadataAmount: "",
+      metadataCounterpartyName: "",
+      notes: "",
+    };
+    updateField("evidenceFiles", [...form.evidenceFiles, entry]);
   };
 
   const removeEvidenceFile = (id: string) => {
@@ -508,13 +522,20 @@ export default function NewCase() {
                   {/* ── Step 3: Evidence Upload ── */}
                   {step === 3 && (
                     <>
-                      <div
-                        className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-accent/40 hover:bg-accent/5 transition-all cursor-pointer"
-                        onClick={() => document.getElementById("evidence-input")?.click()}
-                      >
-                        <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
-                        <p className="text-sm font-medium">Click to upload evidence files</p>
-                        <p className="text-xs text-muted-foreground mt-1">Invoices, receipts, chat screenshots, delivery proofs, etc.</p>
+                      {/* Camera / gallery pickers with large touch targets */}
+                      <div className="rounded-xl border-2 border-dashed border-border p-4 space-y-3">
+                        <CameraCapture onCapture={(captured) => addEvidenceFileFromCapture(captured.file)} />
+                        <p className="text-center text-xs text-muted-foreground">
+                          Take a photo or choose files — invoices, receipts, chat screenshots, delivery proofs, etc.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => document.getElementById("evidence-input")?.click()}
+                          className="mx-auto flex min-h-[2.75rem] items-center gap-2 rounded-lg px-3 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                        >
+                          <Upload className="h-4 w-4" />
+                          Browse all file types (PDF, docs)
+                        </button>
                         <input id="evidence-input" type="file" multiple className="hidden" accept="image/*,.pdf,.doc,.docx,.txt,.csv" onChange={(e) => addEvidenceFile(e.target.files)} />
                       </div>
 
@@ -524,15 +545,23 @@ export default function NewCase() {
                             <div key={ev.id} className="rounded-xl border border-border/70 bg-card p-4">
                               <div className="flex items-start justify-between">
                                 <div className="flex items-center gap-3">
-                                  <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground">
-                                    {ev.file.name.split(".").pop()?.toUpperCase() || "?"}
-                                  </div>
+                                  {ev.file.type.startsWith("image/") ? (
+                                    <img
+                                      src={URL.createObjectURL(ev.file)}
+                                      alt={`Preview of ${ev.file.name}`}
+                                      className="h-10 w-10 rounded-lg border border-border object-cover"
+                                    />
+                                  ) : (
+                                    <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground">
+                                      {ev.file.name.split(".").pop()?.toUpperCase() || "?"}
+                                    </div>
+                                  )}
                                   <div>
                                     <p className="text-sm font-medium truncate max-w-[200px]">{ev.file.name}</p>
                                     <p className="text-xs text-muted-foreground">{(ev.file.size / 1024).toFixed(1)} KB</p>
                                   </div>
                                 </div>
-                                <button onClick={() => removeEvidenceFile(ev.id)} className="text-muted-foreground hover:text-destructive transition-colors">
+                                <button onClick={() => removeEvidenceFile(ev.id)} aria-label={`Remove ${ev.file.name}`} className="flex h-11 w-11 items-center justify-center text-muted-foreground hover:text-destructive transition-colors">
                                   <X className="h-4 w-4" />
                                 </button>
                               </div>
