@@ -264,14 +264,15 @@ root.render(
       </ToolbarErrorBoundary>
       <ConvexAuthProvider client={convex}>
         <AppWithLock />
-        <PwaServiceWorkerBridge />
       </ConvexAuthProvider>
     </RootErrorBoundary>
   </StrictMode>,
 );
 
-// Register the service worker after first paint (non-blocking).
-if ("serviceWorker" in navigator) {
+// Register the service worker only in production builds. In dev, Vite serves
+// modules unbundled, so precaching "/" there can cache half-baked modules and
+// break the app; the dev server has no cache-first assets to matter anyway.
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     void import("@/lib/pwa").then(({ registerServiceWorker }) =>
       registerServiceWorker(),

@@ -28,6 +28,7 @@ export const add = mutation({
     // Validate file MIME type to prevent malicious uploads
     const allowedMimeTypes = [
       "image/png", "image/jpeg", "image/jpg",
+      "image/webp", "image/heic", "image/heif", "image/gif", "image/bmp", "image/tiff",
       "application/pdf",
       "application/msword",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
