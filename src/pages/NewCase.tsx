@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
-import { useMutation } from "convex/react";
+import { useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -139,6 +139,7 @@ export default function NewCase() {
   const createCase = useMutation(api.cases.create);
   const addEvidence = useMutation(api.evidence.add);
   const generateReport = useMutation(api.reports.generateReport);
+  const getUploadUrl = useAction(api.evidence.generateUploadUrl);
 
   // Accept prefill from screenshot analyzer
   const prefill = (location.state as any)?.prefill;
@@ -292,13 +293,38 @@ export default function NewCase() {
         consentGiven: true,
       });
 
+      // Upload each file to Convex file storage, then record its metadata.
+      // A failed file upload never aborts the case or loses what was typed:
+      // the evidence row is still created (without a file link) and the user
+      // is told exactly which files failed.
+      const failedUploads: string[] = [];
       for (const ev of form.evidenceFiles) {
+        let storageId: string | undefined;
+        try {
+          const uploadUrl = await getUploadUrl();
+          const result = await fetch(uploadUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": ev.file.type || "application/octet-stream",
+            },
+            body: ev.file,
+          });
+          if (!result.ok) {
+            throw new Error(`Upload failed (${result.status})`);
+          }
+          storageId = ((await result.json()) as { storageId: string }).storageId;
+        } catch (uploadError) {
+          console.error("Evidence file upload failed:", ev.file.name, uploadError);
+          failedUploads.push(ev.file.name);
+        }
+
         await addEvidence({
           caseId,
           type: ev.type,
           fileNameOriginal: ev.file.name,
           fileMimeType: ev.file.type || "application/octet-stream",
           fileSizeBytes: ev.file.size,
+          storageId,
           metadataDate: ev.metadataDate || undefined,
           metadataAmount: ev.metadataAmount ? parseFloat(ev.metadataAmount) : undefined,
           metadataCounterpartyName: ev.metadataCounterpartyName || undefined,
@@ -307,11 +333,28 @@ export default function NewCase() {
       }
 
       await generateReport({ caseId });
-      toast.success("Case created successfully!");
+
+      if (failedUploads.length > 0) {
+        toast.warning(
+          `Case saved, but ${failedUploads.length} file${failedUploads.length === 1 ? "" : "s"} couldn't upload: ${failedUploads.join(", ")}. Everything you typed was saved — check your connection and re-add the file from the case page.`,
+          { duration: 8000 },
+        );
+      } else {
+        toast.success("Case created successfully!");
+      }
       navigate(`/cases/${caseId}`);
     } catch (error) {
       console.error("Failed to create case:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to create case");
+      // Local form state is untouched on failure, so retrying keeps everything
+      // the user entered — communicate that explicitly.
+      const msg = error instanceof Error ? error.message : String(error);
+      if (/failed to fetch|network|offline|internet|fetch failed/i.test(msg)) {
+        toast.error(
+          "You're offline — saving needs an internet connection. Reconnect and try again; everything you typed is still here.",
+        );
+      } else {
+        toast.error(error instanceof Error ? error.message : "Failed to create case");
+      }
     } finally {
       setIsSubmitting(false);
     }

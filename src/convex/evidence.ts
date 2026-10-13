@@ -1,7 +1,20 @@
 import { v } from "convex/values";
-import { mutation } from "./_generated/server";
+import { action, mutation } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { sanitizeText } from "./sanitize";
+
+// ── Get a one-time upload URL for evidence files ───────────────
+// The client POSTs the binary to this URL; Convex file storage then holds the
+// bytes and returns a storageId which must be passed to evidence:add. The
+// URL is only issued to a signed-in user — files are never publicly writable.
+export const generateUploadUrl = action({
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    return await ctx.storage.generateUploadUrl();
+  },
+});
 
 // ── Add evidence item ──────────────────────────────────────────
 export const add = mutation({

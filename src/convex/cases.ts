@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { sanitizeText } from "./sanitize";
 
@@ -104,10 +105,22 @@ export const get = query({
     if (!caseData) throw new Error("Case not found");
     if (caseData.userId !== userId) throw new Error("Unauthorized");
 
-    const evidenceItems = await ctx.db
+    const evidenceRows = await ctx.db
       .query("evidenceItems")
       .withIndex("by_case", (q) => q.eq("caseId", args.caseId))
       .collect();
+
+    // Attach owner-scoped file URLs. URLs are only generated inside this
+    // ownership-checked query, so stored binaries are never publicly linked.
+    const evidenceItems = await Promise.all(
+      evidenceRows.map(async (ev) => ({
+        ...ev,
+        fileUrl:
+          ev.storageId && ev.storageId.length > 0
+            ? await ctx.storage.getUrl(ev.storageId as Id<"_storage">)
+            : undefined,
+      })),
+    );
 
     const consistencyChecks = await ctx.db
       .query("consistencyChecks")
@@ -146,6 +159,51 @@ export const get = query({
       escalationDrafts,
       responses,
     };
+  },
+});
+
+// ── Permanently delete a case (owner only) ─────────────────────
+export const remove = mutation({
+  args: {
+    caseId: v.id("cases"),
+    confirm: v.literal("DELETE"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const caseData = await ctx.db.get(args.caseId);
+    if (!caseData) throw new Error("Case not found");
+    if (caseData.userId !== userId) throw new Error("Unauthorized");
+    if (args.confirm !== "DELETE") throw new Error("Confirmation required");
+
+    // Cascade delete everything attached to this case, mirroring the
+    // account-deletion pass in users.deleteMyAccount.
+    const perCaseTables = [
+      "evidenceItems",
+      "consistencyChecks",
+      "generatedReports",
+      "timelineEvents",
+      "escalationDrafts",
+      "responses",
+      "emailSchedules",
+      "emailDeliveryLog",
+      "detectedEmails",
+    ] as const;
+    for (const tableName of perCaseTables) {
+      const rows = await ctx.db
+        .query(tableName)
+        .withIndex("by_case", (q) => q.eq("caseId", args.caseId))
+        .collect();
+      for (const row of rows) await ctx.db.delete(row._id);
+    }
+
+    await ctx.db.delete(args.caseId);
+
+    // Orphaned evidence storage blobs are left for the deployment's
+    // storage-expiry policy (storage cannot be bulk-enumerated per user).
+
+    return true;
   },
 });
 

@@ -18,13 +18,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
+import { Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 import { ShareButton } from "@/components/ShareButton";
 import { toast } from "sonner";
@@ -55,6 +64,7 @@ import {
   Play,
   RefreshCw,
   History,
+  Trash2,
 } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -129,6 +139,7 @@ export default function CaseDetail() {
   const createEscalation = useMutation(api.cases.createEscalation);
   const recordResponse = useMutation(api.cases.recordResponse);
   const addNote = useMutation(api.cases.addNote);
+  const deleteCase = useMutation(api.cases.remove);
 
   const [dispatchDialogOpen, setDispatchDialogOpen] = useState(false);
   const [dispatchTargets, setDispatchTargets] = useState<string[]>([]);
@@ -198,6 +209,25 @@ export default function CaseDetail() {
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
+  };
+
+  // ── Delete case ──────────────────────────────────────────────
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteCase = async () => {
+    setDeleting(true);
+    try {
+      await deleteCase({ caseId: caseId as any, confirm: "DELETE" });
+      toast.success("Case permanently deleted");
+      setConfirmDeleteOpen(false);
+      navigate("/cases");
+    } catch (error) {
+      setConfirmDeleteOpen(false);
+      toast.error(error instanceof Error ? error.message : "Failed to delete case");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   if (caseData === undefined) {
@@ -367,6 +397,16 @@ export default function CaseDetail() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 text-destructive hover:bg-destructive/5"
+                    onClick={() => setConfirmDeleteOpen(true)}
+                    aria-label="Delete case"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </Button>
                   <ShareButton
                     title={`DIP case — ${caseData.bankName}`}
                     text={`DIP case: ${caseData.bankName} (account ${caseData.accountMasked}) frozen since ${caseData.freezeDate}. Disputed amount ₹${caseData.transactionAmount.toLocaleString("en-IN")}. Status: ${caseData.resolutionStatus}.`}
@@ -425,15 +465,35 @@ export default function CaseDetail() {
                   <div className="space-y-2">
                     {caseData.evidenceItems.map((ev) => (
                       <div key={ev._id} className="flex items-center gap-3 rounded-lg border border-border/60 p-3">
-                        <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center text-[10px] font-medium text-muted-foreground shrink-0">
-                          {ev.fileNameOriginal.split(".").pop()?.toUpperCase() || "?"}
-                        </div>
+                        {ev.fileUrl && ev.fileMimeType.startsWith("image/") ? (
+                          <img
+                            src={ev.fileUrl}
+                            alt={`Preview of ${ev.fileNameOriginal}`}
+                            className="h-9 w-9 rounded-lg border border-border object-cover shrink-0"
+                          />
+                        ) : (
+                          <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center text-[10px] font-medium text-muted-foreground shrink-0">
+                            {ev.fileNameOriginal.split(".").pop()?.toUpperCase() || "?"}
+                          </div>
+                        )}
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium truncate">{ev.fileNameOriginal}</p>
                           <p className="text-xs text-muted-foreground">
                             {ev.type.replace(/_/g, " ")} • {(ev.fileSizeBytes / 1024).toFixed(1)} KB
+                            {!ev.storageId && " • file not uploaded"}
                           </p>
                         </div>
+                        {ev.fileUrl && (
+                          <a
+                            href={ev.fileUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex h-11 min-w-[3rem] items-center justify-center rounded-lg px-2 text-xs font-medium text-accent hover:text-accent/80 transition-colors shrink-0"
+                            aria-label={`Open ${ev.fileNameOriginal}`}
+                          >
+                            View
+                          </a>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1406,6 +1466,29 @@ export default function CaseDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this case permanently?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes the case, its evidence, reports, timeline, escalation drafts and responses for good. This
+              cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteCase}
+              disabled={deleting}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              {deleting ? "Deleting…" : "Delete permanently"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
