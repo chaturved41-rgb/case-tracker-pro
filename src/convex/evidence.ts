@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { action, mutation } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { sanitizeText } from "./sanitize";
@@ -49,12 +49,16 @@ export const add = mutation({
       "application/octet-stream", // fallback for unknown types
     ];
     if (args.fileMimeType && !allowedMimeTypes.includes(args.fileMimeType)) {
-      throw new Error(`File type "${args.fileMimeType}" is not allowed`);
+      throw new ConvexError(
+        `Unsupported file type "${args.fileMimeType}". Try PNG, JPEG, WEBP, HEIC, GIF, BMP, TIFF, PDF, DOC/DOCX, TXT or CSV.`,
+      );
     }
 
     // Validate file size (10MB max)
     if (args.fileSizeBytes > 10 * 1024 * 1024) {
-      throw new Error("File exceeds 10MB limit");
+      throw new ConvexError(
+        "This file is larger than 10 MB. Please compress it or use a smaller file.",
+      );
     }
 
     const now = Date.now();

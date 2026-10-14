@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { getAuthUserId } from "@convex-dev/auth/server";
@@ -30,19 +30,25 @@ export const create = mutation({
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
-    // Server-side consent enforcement
+    // Server-side consent enforcement.
+    // ConvexError (not plain Error) so the message reaches the client's
+    // toast verbatim instead of surfacing as generic "Server Error".
     if (!args.consentGiven) {
-      throw new Error("Consent is required to create a case");
+      throw new ConvexError(
+        "Consent is required before saving a case. Please accept the terms and try again.",
+      );
     }
 
-    // Validate masked account format (must contain at least some X characters)
-    if (!args.accountMasked.match(/^X/i)) {
-      throw new Error("Account must be masked (e.g., XXXX4321). Full account numbers are not accepted.");
+    // Validate masked account format (must start with X characters)
+    if (!args.accountMasked.trim().match(/^X/i)) {
+      throw new ConvexError(
+        "Please enter your masked account number (e.g., XXXX4321) — full account numbers are not accepted.",
+      );
     }
 
-    // Validate transaction amount is positive
-    if (args.transactionAmount <= 0) {
-      throw new Error("Transaction amount must be positive");
+    // Validate transaction amount is a positive, finite number
+    if (!Number.isFinite(args.transactionAmount) || args.transactionAmount <= 0) {
+      throw new ConvexError("Please enter the transaction amount as a positive number.");
     }
 
     const now = Date.now();

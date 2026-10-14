@@ -345,15 +345,23 @@ export default function NewCase() {
       navigate(`/cases/${caseId}`);
     } catch (error) {
       console.error("Failed to create case:", error);
+      // Server validation failures arrive as ConvexError: the readable text
+      // is on .data, while .message is the noisy "Server Error" blob.
+      const dataMsg = (error as { data?: unknown })?.data;
+      const readableMsg =
+        typeof dataMsg === "string" && dataMsg.length > 0
+          ? dataMsg
+          : error instanceof Error
+            ? error.message
+            : String(error);
       // Local form state is untouched on failure, so retrying keeps everything
       // the user entered — communicate that explicitly.
-      const msg = error instanceof Error ? error.message : String(error);
-      if (/failed to fetch|network|offline|internet|fetch failed/i.test(msg)) {
+      if (/failed to fetch|network|offline|internet|fetch failed/i.test(readableMsg)) {
         toast.error(
           "You're offline — saving needs an internet connection. Reconnect and try again; everything you typed is still here.",
         );
       } else {
-        toast.error(error instanceof Error ? error.message : "Failed to create case");
+        toast.error(readableMsg);
       }
     } finally {
       setIsSubmitting(false);
