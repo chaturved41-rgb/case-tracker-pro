@@ -104,6 +104,14 @@ const FREEZE_TYPES = [
   { value: "full_freeze", label: "Full Freeze" },
 ];
 
+// ── Masked account helpers ─────────────────────────────────────
+// Users type masks in many styles (xxxx4321, ****4321, "XXXX 4321"). Only the
+// digits matter: count them to warn about full account numbers, and convert
+// to the XXXX#### style the server expects right before submitting.
+const maskDigits = (value: string): string => value.replace(/\D/g, "");
+const normalizeAccountMasked = (value: string): string =>
+  "XXXX" + maskDigits(value).slice(-4);
+
 const PURPOSES = [
   { value: "freelance", label: "Freelance work" },
   { value: "sale", label: "Sale of goods" },
@@ -196,13 +204,19 @@ export default function NewCase() {
     if (stepIndex === 0) {
       if (!form.bankName.trim()) newErrors.bankName = "Bank name is required";
       if (!form.accountMasked.trim()) newErrors.accountMasked = "Masked account is required";
+      else if (maskDigits(form.accountMasked).length > 4)
+        newErrors.accountMasked =
+          "That looks like a full account number — enter only the last 4 digits (e.g., XXXX4321).";
       if (!form.freezeType) newErrors.freezeType = "Freeze type is required";
       if (!form.freezeDate) newErrors.freezeDate = "Freeze date is required";
     }
 
     if (stepIndex === 2) {
       if (!form.transactionDate) newErrors.transactionDate = "Transaction date is required";
-      if (!form.transactionAmount || parseFloat(form.transactionAmount) <= 0)
+      const amountValue = form.transactionAmount.trim();
+      if (amountValue && !/^\d+(\.\d*)?$/.test(amountValue))
+        newErrors.transactionAmount = "Enter numbers only, for example 15000";
+      else if (!amountValue || parseFloat(amountValue) <= 0)
         newErrors.transactionAmount = "Valid amount is required";
       if (!form.senderName.trim()) newErrors.senderName = "Sender name is required";
       if (!form.purpose) newErrors.purpose = "Purpose is required";
@@ -218,6 +232,18 @@ export default function NewCase() {
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+
+  // ── Live inline validation (visible while typing, enforced on Next) ──
+  const accountDigits = maskDigits(form.accountMasked);
+  const accountFullNumberWarning =
+    accountDigits.length > 4
+      ? "That looks like a full account number — enter only the last 4 digits (e.g., XXXX4321)."
+      : undefined;
+  const amountValue = form.transactionAmount.trim();
+  const amountFormatWarning =
+    amountValue !== "" && !/^\d+(\.\d*)?$/.test(amountValue)
+      ? "Enter numbers only, for example 15000."
+      : undefined;
 
   const nextStep = () => {
     if (validateStep(step)) {
@@ -275,7 +301,7 @@ export default function NewCase() {
       const caseId = await createCase({
         bankName: form.bankName.trim(),
         branch: form.branch.trim() || undefined,
-        accountMasked: form.accountMasked.trim(),
+        accountMasked: normalizeAccountMasked(form.accountMasked),
         freezeType: form.freezeType,
         freezeDate: form.freezeDate,
         policeStationName: form.policeStationName.trim() || undefined,
@@ -455,7 +481,7 @@ export default function NewCase() {
                       <Field label="Branch (optional)">
                         <Input placeholder="e.g. Andheri West" value={form.branch} onChange={(e) => updateField("branch", e.target.value)} />
                       </Field>
-                      <Field label="Masked Account Number" required error={errors.accountMasked} hint="Only last 4 digits, e.g. XXXX4321">
+                      <Field label="Masked Account Number" required error={errors.accountMasked || accountFullNumberWarning} hint="Enter only the last 4 digits like XXXX4321. Never enter your full account number.">
                         <Input placeholder="XXXX4321" value={form.accountMasked} onChange={(e) => updateField("accountMasked", e.target.value)} />
                       </Field>
                       <Field label="Freeze Type" required error={errors.freezeType}>
@@ -535,7 +561,7 @@ export default function NewCase() {
                       <Field label="Transaction Date" required error={errors.transactionDate}>
                         <Input type="date" value={form.transactionDate} onChange={(e) => updateField("transactionDate", e.target.value)} />
                       </Field>
-                      <Field label="Transaction Amount (₹)" required error={errors.transactionAmount}>
+                      <Field label="Transaction Amount (₹)" required error={errors.transactionAmount || amountFormatWarning}>
                         <Input type="number" placeholder="e.g. 15000" min="0" step="0.01" value={form.transactionAmount} onChange={(e) => updateField("transactionAmount", e.target.value)} />
                       </Field>
                       <Field label="Sender Name" required error={errors.senderName} hint="Who sent you the money?">
